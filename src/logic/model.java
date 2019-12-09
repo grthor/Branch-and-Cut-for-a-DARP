@@ -7,42 +7,32 @@ import ilog.concert.*;
 public class model {
 	
 	/**
-	 * Number of users. 
+	 * Here you can change the number of users. 
 	 */
-	private static int n = 5;
+	private static int n;
 	private static IloCplex cplex;
 	private static IloNumVar[][][] x;
+	private static Node[] N;
 
 	public static void main(String[] args) {
 		
-		//Auto generate Nodes:
+		// Uncomment if you want to automatically create Nodes
+//		autoGenerateNodes(5);
 		
-		Node[] N = new Node[2*n+2];
-		//Start Node is the origin depot.
-		N[0] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, 0, 0);
+		//Generate a predefined set of nodes.
+		setDefaultNodes();
 		
-		//Pick up nodes 1..n
-		for (int i = 1; i <= n; i++) {			
-			N[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, 1, 30);
-		}
-		
-		//Drop down nodes n+1..2n
-		for (int i = n+1; i <= 2*n; i++) {
-			N[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, -1, 30);
-		}
-		
-		//Destination Node 2n+1 is the last node.
-		N[2*n+1] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, 0, 0);
 		
 		//Print Node Positions for Excel.
-		System.out.println("Knoten\txPosition\tyPosition");
-		for (int i = 0; i <= 2*n+1; i++) {
-			System.out.println(i + "\t" + N[i].getxPosition() + "\t" + N[i].getyPosition());
-		}
+//		System.out.println("Knoten\txPosition\tyPosition");
+//		for (int i = 0; i <= 2*n+1; i++) {
+//			System.out.println(i + "\t" + N[i].getxPosition() + "\t" + N[i].getyPosition());
+//		}
 		
 		Truck[] K = new Truck[2];
-		K[0] = new Truck(2, 2000);
-		K[1] = new Truck(3, 2000);
+		K[0] = new Truck(2, 1000);
+		K[1] = new Truck(2, 1000);
+//		K[2] = new Truck(0, 1000); 		// Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound infeasibility column 'Q(i1;k2)'.
 		
 
 		// c enthält die Distanz zwischen allen Knoten
@@ -204,7 +194,7 @@ public class model {
 			IloNumVar[][] Q = new IloNumVar[N.length][K.length];
 			for (int i = 0; i < N.length; i++) {
 				for (int k = 0; k < K.length; k++) {
-					Q[i][k] = cplex.numVar(-1, 1, "Q(i" + i + ";k" + k + ")");
+					Q[i][k] = cplex.numVar(-2, 2, "Q(i" + i + ";k" + k + ")");
 				}
 			}
 			
@@ -228,7 +218,7 @@ public class model {
 			}
 			
 			//Maximum ride time of a user: For example 180 Minutes.
-			double lMaxRideTime = 600;
+			double lMaxRideTime = 360;
 			
 			//Definition L_i^k: The ride time of user i on vehicle k.
 			IloNumVar[][] L = new IloNumVar[N.length][K.length];
@@ -375,6 +365,61 @@ public class model {
 			}
 		}
 		return 0;
+	}
+	
+	/**
+	 * Automatically generates random Nodes.
+	 * @param numberOfNodes
+	 */
+	public static void autoGenerateNodes(int numberOfNodes) {
+		//Auto generate Nodes:
+		n = numberOfNodes;
+		
+		N = new Node[2*n+2];
+		//Start Node is the origin depot.
+		N[0] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, 0, 0);
+		
+		//Pick up nodes 1..n
+		for (int i = 1; i <= n; i++) {			
+			N[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, 1, 30);
+		}
+		
+		//Drop down nodes n+1..2n
+		for (int i = n+1; i <= 2*n; i++) {
+			N[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, -1, 30);
+		}
+		
+		//Destination Node 2n+1 is the last node.
+		N[2*n+1] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, 0, 0);
+	}
+	
+	/**
+	 * Generate a default set of Nodes.</br>
+	 * 3 pickup locations, 3 dropdown locations, the start node and a end node will be created.
+	 */
+	public static void setDefaultNodes() {
+		n = 5;
+		
+		N = new Node[12];
+		// The start node.
+		N[0] = new Node(1, 2, 0, 1440, 0, 0);
+		
+		//The pick up nodes.
+		N[1] = new Node(1, 1, 0, 1440, 1, 30);
+		N[2] = new Node(1, 4, 0, 1440, 1, 30);
+		N[3] = new Node(4, 3, 0, 1440, 1, 30);
+		N[4] = new Node(2, 2, 0, 1440, 1, 30);
+		N[5] = new Node(2, 4, 0, 1440, 1, 30);
+		
+		//The drop down nodes.
+		N[6] = new Node(4, 1, 0, 1440, -1, 30);
+		N[7] = new Node(4, 4, 0, 1440, -1, 30);
+		N[8] = new Node(1, 3, 0, 1440, -1, 30);
+		N[9] = new Node(3, 4, 0, 1440, -1, 30);
+		N[10] = new Node(3, 1, 0, 1440, -1, 30);
+		
+		//The end depot.
+		N[11] = new Node(3, 2, 0, 1440, 0, 0);
 	}
 
 }
