@@ -201,6 +201,8 @@ public class model {
 			//Constraint 8: Die geladenen Ressourcen auf LKW k müssen bei Knoten i 
 			//plus dem Load von Knoten i kleiner/gleich den geladenen Ressourcen
 			//bei Knoten j sein.
+			// Version von Cordeau: Ist schneller als die Version von Pesch.
+			// Liefert das selbe Ergebnis wie Pesch.
 			double W;
 			for (int i = 0; i < N.length; i++) {
 				for (int j = 0; j < N.length; j++) {
@@ -216,6 +218,28 @@ public class model {
 					}
 				}
 			}
+			
+			// Version von Pesch: Ist langsamer als die Version von Cordeau.
+			// Liefert das selbe Ergebnis wie Pesch.
+//			for (int k = 0; k < K.length; k++) {
+//				for (int i = 0; i < N.length; i++) {
+//					for (int j = 0; j < N.length; j++) {
+//						if (i != j) {
+//							IloLinearNumExpr expr1 = cplex.linearNumExpr();
+//							expr1.addTerm(1.0, Q[i][k]);
+//							expr1.setConstant(N[j].getLoad() + K[k].getCapacity());
+//							expr1.addTerm(-K[k].getCapacity(), x[i][j][k]);
+//							cplex.addLe(Q[j][k], expr1, "Contraint10a");
+//							
+//							IloLinearNumExpr expr2 = cplex.linearNumExpr();
+//							expr2.addTerm(1.0, Q[i][k]);
+//							expr2.setConstant(N[j].getLoad() - K[k].getCapacity());
+//							expr2.addTerm(K[k].getCapacity(), x[i][j][k]);
+//							cplex.addGe(Q[j][k], expr2, "Constraint10b");
+//						}
+//					}
+//				}
+//			}
 			
 			//Maximum ride time of a user: For example 180 Minutes.
 			double lMaxRideTime = 360;
