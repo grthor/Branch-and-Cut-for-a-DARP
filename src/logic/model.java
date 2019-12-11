@@ -32,10 +32,10 @@ public class model {
 //		}
 
 		// Alle Trucks müssen die selben Container transportieren können.
-		K = new Truck[3];
+		K = new Truck[2];
 		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 500);
-		K[1] = new Truck(new int[] { 2, 0, 0, 0 }, 1000);
-		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000); // Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
+		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 1500);
+//		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000); // Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
 															// infeasibility column 'Q(i1;k2)'.
 
 		// c enthält die Distanz zwischen allen Knoten
@@ -213,25 +213,25 @@ public class model {
 			// bei Knoten j sein.
 			// Version von Cordeau: Ist schneller als die Version von Pesch.
 			// Liefert das selbe Ergebnis wie Pesch.
-//			double W;
-//			for (int i = 0; i < N.length; i++) {
-//				for (int j = 0; j < N.length; j++) {
-//					if (i != j) {
-//						for (int k = 0; k < K.length; k++) {
-//							for (int r = 0; r <= 3; r++) {
-//								W = Math.min(K[k].getCapacity()[r], K[k].getCapacity()[r] + N[i].getLoad()[r]);
-//								IloLinearNumExpr expr = cplex.linearNumExpr();
-//								expr.addTerm(1.0, Q[i][r][k]);
-////								expr.setConstant(N[j].getLoad()[r] - W);
+			double W;
+			for (int i = 0; i < N.length; i++) {
+				for (int j = 0; j < N.length; j++) {
+					if (i != j) {
+						for (int k = 0; k < K.length; k++) {
+							for (int r = 0; r <= 3; r++) {
+								W = Math.min(K[k].getCapacity()[r], K[k].getCapacity()[r] + N[i].getLoad()[r]);
+								IloLinearNumExpr expr = cplex.linearNumExpr();
+								expr.addTerm(1.0, Q[i][r][k]);
+								expr.setConstant(N[j].getLoad()[r] - W);
 //								expr.setConstant(N[j].getLoad()[r] - 100);
-////								expr.addTerm(W, x[i][j][k]);
+								expr.addTerm(W, x[i][j][k]);
 //								expr.addTerm(100, x[i][j][k]);
-//								cplex.addGe(Q[j][r][k], expr, "Constraint8(i" + i + ";j" + j + ";k" + k + ";r" + r + ")");
-//							}
-//						}
-//					}
-//				}
-//			}
+								cplex.addGe(Q[j][r][k], expr, "Constraint8(i" + i + ";j" + j + ";k" + k + ";r" + r + ")");
+							}
+						}
+					}
+				}
+			}
 
 			// Version von Pesch: Ist langsamer als die Version von Cordeau.
 			// Liefert das selbe Ergebnis wie Pesch.
@@ -251,18 +251,18 @@ public class model {
 									expr1.addTerm(1.0, Q[i][r][k]);
 									// Hier ist die big M notation abggeändert.
 									// Groß M soll eigentlich die Kapazität des LKW sein, ist jetzt aber 100
-//									expr1.setConstant(N[j].getLoad()[r] + K[k].getCapacity()[r]);
-									expr1.setConstant(N[j].getLoad()[r] + 100);
-//									expr1.addTerm(-K[k].getCapacity()[r], x[i][j][k]);
-									expr1.addTerm(-100, x[i][j][k]);
+									expr1.setConstant(N[j].getLoad()[r] + K[k].getCapacity()[r]);
+//									expr1.setConstant(N[j].getLoad()[r] + 100);
+									expr1.addTerm(-K[k].getCapacity()[r], x[i][j][k]);
+//									expr1.addTerm(-100, x[i][j][k]);
 									cplex.addLe(Q[j][r][k], expr1, "Contraint10a(k" + k + ";i" + i + ";j" + j + ";r" + r + ")");
 									
 									IloLinearNumExpr expr2 = cplex.linearNumExpr();
 									expr2.addTerm(1.0, Q[i][r][k]);
-//									expr2.setConstant(N[j].getLoad()[r] - K[k].getCapacity()[r]);
-									expr2.setConstant(N[j].getLoad()[r] - 100);
-//									expr2.addTerm(K[k].getCapacity()[r], x[i][j][k]);
-									expr2.addTerm(100, x[i][j][k]);
+									expr2.setConstant(N[j].getLoad()[r] - K[k].getCapacity()[r]);
+//									expr2.setConstant(N[j].getLoad()[r] - 100);
+									expr2.addTerm(K[k].getCapacity()[r], x[i][j][k]);
+//									expr2.addTerm(100, x[i][j][k]);
 									cplex.addGe(Q[j][r][k], expr2, "Constraint10b(k" + k + ";i" + i + ";j" + j + ";r" + r + ")");
 //								}
 //									}
@@ -470,16 +470,16 @@ public class model {
 
 		// The pick up nodes.
 		N[1] = new Node(1, 1, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
-		N[2] = new Node(1, 4, 0, 1440, new int[] { 2, 0, 0, 0 }, 30);
-		N[3] = new Node(4, 3, 0, 1440, new int[] { 0, 0, 0, 0 }, 30);
-		N[4] = new Node(2, 2, 0, 1440, new int[] { 2, 0, 0, 0 }, 30);
+		N[2] = new Node(1, 4, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
+		N[3] = new Node(4, 3, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
+		N[4] = new Node(2, 2, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
 		N[5] = new Node(2, 4, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
 
 		// The drop down nodes.
 		N[6] = new Node(4, 1, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
-		N[7] = new Node(4, 4, 0, 1440, new int[] { -2, 0, 0, 0 }, 30);
-		N[8] = new Node(1, 3, 0, 1440, new int[] { 0, 0, 0, 0 }, 30);
-		N[9] = new Node(3, 4, 0, 1440, new int[] { -2, 0, 0, 0 }, 30);
+		N[7] = new Node(4, 4, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
+		N[8] = new Node(1, 3, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
+		N[9] = new Node(3, 4, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
 		N[10] = new Node(3, 1, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
 
 		// The end depot.
