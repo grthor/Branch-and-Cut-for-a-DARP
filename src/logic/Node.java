@@ -6,11 +6,11 @@ public class Node {
 	private double yPosition;
 	private double beginServiceTime;
 	private double endServiceTime;
-	private int load;
+	private int[] load = new int[4];
 	private int serviceDuration;
 	
 	
-	public Node(double xPosition, double yPosition, double beginServiceTime, double endServiceTime, int load,
+	public Node(double xPosition, double yPosition, double beginServiceTime, double endServiceTime, int[] load,
 			int serviceDuration) {
 		super();
 		this.xPosition = xPosition;
@@ -62,12 +62,12 @@ public class Node {
 	}
 
 
-	public int getLoad() {
+	public int[] getLoad() {
 		return load;
 	}
 
 
-	public void setLoad(int load) {
+	public void setLoad(int load[]) {
 		this.load = load;
 	}
 
