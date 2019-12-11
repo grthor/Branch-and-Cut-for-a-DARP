@@ -34,7 +34,7 @@ public class model {
 		// Alle Trucks müssen die selben Container transportieren können.
 		K = new Truck[3];
 		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 500);
-		K[1] = new Truck(new int[] { 2, 0, 0, 0 }, 1000);
+		K[1] = new Truck(new int[] { 2, 0, 0, 0 }, 1500);
 		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000); // Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
 															// infeasibility column 'Q(i1;k2)'.
 
@@ -471,14 +471,14 @@ public class model {
 		// The pick up nodes.
 		N[1] = new Node(1, 1, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
 		N[2] = new Node(1, 4, 0, 1440, new int[] { 2, 0, 0, 0 }, 30);
-		N[3] = new Node(4, 3, 0, 1440, new int[] { 0, 0, 0, 0 }, 30);
+		N[3] = new Node(4, 3, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
 		N[4] = new Node(2, 2, 0, 1440, new int[] { 2, 0, 0, 0 }, 30);
 		N[5] = new Node(2, 4, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
 
 		// The drop down nodes.
 		N[6] = new Node(4, 1, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
 		N[7] = new Node(4, 4, 0, 1440, new int[] { -2, 0, 0, 0 }, 30);
-		N[8] = new Node(1, 3, 0, 1440, new int[] { 0, 0, 0, 0 }, 30);
+		N[8] = new Node(1, 3, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
 		N[9] = new Node(3, 4, 0, 1440, new int[] { -2, 0, 0, 0 }, 30);
 		N[10] = new Node(3, 1, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
 
