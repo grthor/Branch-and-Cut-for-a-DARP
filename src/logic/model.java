@@ -36,10 +36,10 @@ public class model {
 //		}
 
 		// Alle Trucks müssen die selben Container transportieren können.
-		K = new Truck[2];
+		K = new Truck[3];
 		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 500);
 		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 1500);
-//		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000); // Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
+		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000); // Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
 															// infeasibility column 'Q(i1;k2)'.
 
 		// c enthält die Distanz zwischen allen Knoten
@@ -480,42 +480,15 @@ public class model {
 	}
 
 	/**
-	 * Automatically generates random Nodes.
-	 * 
-	 * @param numberOfNodes
-	 */
-	public static void autoGenerateNodes(int numberOfNodes) {
-		// Auto generate Nodes:
-		n = numberOfNodes;
-
-		V = new Node[2 * n + 2];
-		// Start Node is the origin depot.
-		V[0] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
-
-		// Pick up nodes 1..n
-		for (int i = 1; i <= n; i++) {
-			V[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
-		}
-
-		// Drop down nodes n+1..2n
-		for (int i = n + 1; i <= 2 * n; i++) {
-			V[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
-		}
-
-		// Destination Node 2n+1 is the last node.
-		V[2 * n + 1] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
-	}
-
-	/**
 	 * Generate a default set of Nodes.</br>
 	 * 3 pickup locations, 3 dropdown locations, the start node and a end node will
 	 * be created.
 	 */
 	public static void setDefaultNodes() {
 		n = 5;
-		f = 3;
+		f = 0;
 
-		V = new Node[15];
+		V = new Node[12];
 		// The start node.
 		V[0] = new Node(1, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
 
@@ -534,12 +507,12 @@ public class model {
 		V[10] = new Node(3, 1, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
 		
 		// Alternative Fuel Stations
-		V[11] = new Node(2, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 15);
-		V[12] = new Node(4, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 15);
-		V[13] = new Node(3, 3, 0, 1440, new int[] { 0, 0, 0, 0 }, 15);
+//		V[11] = new Node(2, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 15);
+//		V[12] = new Node(4, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 15);
+//		V[13] = new Node(3, 3, 0, 1440, new int[] { 0, 0, 0, 0 }, 15);
 
 		// The end depot.
-		V[14] = new Node(3, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
+		V[11] = new Node(3, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
 	}
 
 	private static void solveModel() {
