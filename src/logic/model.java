@@ -195,6 +195,140 @@ public class model {
 				}
 				cplex.addEq(expr, 1.0, "Constraint9");
 			}
+			
+			// Definition Variable Q_ik: Load of vehicle k after visiting node i.
+			IloNumVar[][][] Q = new IloNumVar[V.length][4][K.length];
+			for (int i = 0; i < V.length; i++) {
+				for (int r = 0; r <= 3; r++) {
+					for (int k = 0; k < K.length; k++) {
+						Q[i][r][k] = cplex.numVar(0, K[k].getCapacity()[r], "Q(i" + i + ";r" + r + ";k" + k + ")");
+					}
+				}
+			}
+
+			// Constraint 10 Pesch: Die geladenen Ressourcen auf LKW k müssen bei Knoten i
+			// plus dem Load von Knoten i kleiner/gleich den geladenen Ressourcen
+			// bei Knoten j sein.
+			// Version von Cordeau: Ist schneller als die Version von Pesch.
+			// Liefert das selbe Ergebnis wie Pesch.
+			// Constraint 8 Cordeau
+			//Cordeau
+//			double W;
+//			for (int i = 0; i < V.length; i++) {
+//				for (int j = 0; j < V.length; j++) {
+//					if (i != j) {
+//						for (int k = 0; k < K.length; k++) {
+//							for (int r = 0; r <= 3; r++) {
+//								W = Math.min(K[k].getCapacity()[r], K[k].getCapacity()[r] + V[i].getLoad()[r]);
+//								IloLinearNumExpr expr = cplex.linearNumExpr();
+//								expr.addTerm(1.0, Q[i][r][k]);
+//								expr.setConstant(V[j].getLoad()[r] - W);
+//								expr.addTerm(W, x[i][j][k]);
+//								cplex.addGe(Q[j][r][k], expr, "Constraint8(i" + i + ";j" + j + ";k" + k + ";r" + r + ")");
+//							}
+//						}
+//					}
+//				}
+//			}
+
+			// Version von Pesch: Ist langsamer als die Version von Cordeau.
+			// Liefert das selbe Ergebnis wie Pesch.
+			for (int k = 0; k < K.length; k++) {
+			//Modell geändert: Im Original wird anstatt N=PuD N=PuDu{0, 2n+1} genommen.
+			//Start und Zieldepot sind in dieser Variante inbegriffen.
+				for (int i = 0; i < V.length; i++) {
+				// Hier das selbe wie beim vorherigen Kommentar. Für Start- und Zielknoten 
+				// gilt diese Bedingung auch.
+					for (int j = 0; j < V.length; j++) {
+						if (i != j) {
+							for (int r = 0; r <= 3; r++) {
+								IloLinearNumExpr expr1 = cplex.linearNumExpr();
+								expr1.addTerm(1.0, Q[i][r][k]);
+								expr1.setConstant(V[j].getLoad()[r] + K[k].getCapacity()[r]);
+								expr1.addTerm(-K[k].getCapacity()[r], x[i][j][k]);
+								cplex.addLe(Q[j][r][k], expr1, "Contraint10a(k" + k + ";i" + i + ";j" + j + ";r" + r + ")");
+								
+								IloLinearNumExpr expr2 = cplex.linearNumExpr();
+								expr2.addTerm(1.0, Q[i][r][k]);
+								expr2.setConstant(V[j].getLoad()[r] - K[k].getCapacity()[r]);
+								expr2.addTerm(K[k].getCapacity()[r], x[i][j][k]);
+								cplex.addGe(Q[j][r][k], expr2, "Constraint10b(k" + k + ";i" + i + ";j" + j + ";r" + r + ")");
+							}
+						}
+					}
+				}
+			}
+			
+			// Constraint 11 Pesch: impose capacity constraint
+			// Constraint 12 Cordeau
+			// Cordeau
+//			for (int i = 0; i < N.length; i++) {
+//				for (int k = 0; k < K.length; k++) {
+//					for (int r = 0; r <= 3; r++) {
+//						cplex.addLe(Math.max(0, N[i].getLoad()[r]), Q[i][r][k], "Constraint13_1");
+//						cplex.addLe(Q[i][r][k],
+//								Math.min(K[k].getCapacity()[r], K[k].getCapacity()[r] + N[i].getLoad()[r]),
+//								"Constraint13_2");
+//					}
+//				}
+//			}
+
+			// Pesch
+			for (int k = 0; k < K.length; k++) {
+				for (int i = 0; i < V.length; i++) {
+					for (int r = 0; r <= 3; r++) {
+						cplex.addLe(0.0, Q[i][r][k], "Constraint11_1");
+						cplex.addLe(Q[i][r][k], K[k].getCapacity()[r], "Constraint11_2");
+					}
+				}
+			}
+			
+			// Constraint 12 Pesch: Leere und volle 30 Fuß Container dürfen die Kapazität des LKWs
+			// nicht überschreiten. Bsp. Ein LKW kann nicht 2 volle 30 Fuß Container und 2 
+			// leere 30 Fuß Container laden, da er nur Platz für insgesamt 2 Container hat.
+			for (int k = 0; k < K.length; k++) {
+				for (int i = 0; i < V.length; i++) {
+					IloLinearNumExpr expr = cplex.linearNumExpr();
+					expr.addTerm(1.0, Q[i][0][k]);
+					expr.addTerm(1.0, Q[i][1][k]);
+					cplex.addLe(expr, K[k].getCapacity()[0], "Constraint12");
+				}
+			}
+
+			// Constraint 13 Pesch: Leere und volle 60 Fuß Container zusammen dürfen die Kapazität
+			// des LKWs nicht übeschreiten. Bsp.: Es kann nicht ein voller und ein leerer 60"
+			// Container gleichzeitig geladen sein.
+			for (int k = 0; k < K.length; k++) {
+				for (int i = 0; i < V.length; i++) {
+					IloLinearNumExpr expr = cplex.linearNumExpr();
+					expr.addTerm(1.0, Q[i][2][k]);
+					expr.addTerm(1.0, Q[i][3][k]);
+					cplex.addLe(expr, K[k].getCapacity()[2], "Constraint13");
+				}
+			}
+			
+			// Constraint 14 Pesch: Start with empty
+			// Constraint 14 und 15 haben den Algorithmus doppelt so schnell gemacht.
+			// Beide Constraints sind aber nicht notwendig.
+			// Pesch
+			for (int k = 0; k < K.length; k++) {
+				for (int r = 0; r <= 3; r++) {
+					cplex.addEq(Q[0][r][k], 0.0, "Constraint14");
+				}
+			}
+
+			// Constraint 15 Pesch: Route beenden ohne container.
+			// Constraint 14 und 15 haben den Algorithmus doppelt so schnell gemacht.
+			// Beide Constraints sind aber nicht notwendig.
+			// Pesch
+			for (int k = 0; k < K.length; k++) {
+				for (int r = 0; r <= 3; r++) {
+					cplex.addEq(Q[V.length - 1][r][k], 0.0, "Constraint15");
+				}
+			}
+			
+			
+			
 
 			// Kontinuirliche Variable B_ik für die Zeit, an der Truck seinen
 			// Service an Knoten i beginnt.
@@ -220,81 +354,6 @@ public class model {
 							expr.setConstant(V[i].getServiceDuration() + t[i][j] - M);
 							expr.addTerm(M, x[i][j][k]);
 							cplex.addGe(B[j][k], expr, "Constraint7");
-						}
-					}
-				}
-			}
-
-			// Definition Variable Q_ik: Load of vehicle k after visiting node i.
-			IloNumVar[][][] Q = new IloNumVar[V.length][4][K.length];
-			for (int i = 0; i < V.length; i++) {
-				for (int r = 0; r <= 3; r++) {
-					for (int k = 0; k < K.length; k++) {
-						Q[i][r][k] = cplex.numVar(0, K[k].getCapacity()[r], "Q(i" + i + ";r" + r + ";k" + k + ")");
-					}
-				}
-			}
-
-			// Constraint 8: Die geladenen Ressourcen auf LKW k müssen bei Knoten i
-			// plus dem Load von Knoten i kleiner/gleich den geladenen Ressourcen
-			// bei Knoten j sein.
-			// Version von Cordeau: Ist schneller als die Version von Pesch.
-			// Liefert das selbe Ergebnis wie Pesch.
-			double W;
-			for (int i = 0; i < V.length; i++) {
-				for (int j = 0; j < V.length; j++) {
-					if (i != j) {
-						for (int k = 0; k < K.length; k++) {
-							for (int r = 0; r <= 3; r++) {
-								W = Math.min(K[k].getCapacity()[r], K[k].getCapacity()[r] + V[i].getLoad()[r]);
-								IloLinearNumExpr expr = cplex.linearNumExpr();
-								expr.addTerm(1.0, Q[i][r][k]);
-								expr.setConstant(V[j].getLoad()[r] - W);
-//								expr.setConstant(N[j].getLoad()[r] - 100);
-								expr.addTerm(W, x[i][j][k]);
-//								expr.addTerm(100, x[i][j][k]);
-								cplex.addGe(Q[j][r][k], expr, "Constraint8(i" + i + ";j" + j + ";k" + k + ";r" + r + ")");
-							}
-						}
-					}
-				}
-			}
-
-			// Version von Pesch: Ist langsamer als die Version von Cordeau.
-			// Liefert das selbe Ergebnis wie Pesch.
-			for (int k = 0; k < K.length; k++) {
-			//Modell geändert: Im Original wird anstatt N=PuD N=PuDu{0, 2n+1} genommen.
-			//Start und Zieldepot sind in dieser Variante inbegriffen.
-				for (int i = 0; i < V.length; i++) {
-				// Hier das selbe wie beim vorherigen Kommentar. Für Start- und Zielknoten 
-				// gilt diese Bedingung auch.
-					for (int j = 0; j < V.length; j++) {
-						if (i != j) {
-							for (int r = 0; r <= 3; r++) {
-//								if (N[i].getLoad()[r] != 0) {
-//									if (N[j].getLoad()[r] != 0) {
-//								if (K[k].getCapacity()[r] != 0 && N[i].getLoad()[r] != 0 && N[j].getLoad()[r] != 0) {
-									IloLinearNumExpr expr1 = cplex.linearNumExpr();
-									expr1.addTerm(1.0, Q[i][r][k]);
-									// Hier ist die big M notation abggeändert.
-									// Groß M soll eigentlich die Kapazität des LKW sein, ist jetzt aber 100
-									expr1.setConstant(V[j].getLoad()[r] + K[k].getCapacity()[r]);
-//									expr1.setConstant(N[j].getLoad()[r] + 100);
-									expr1.addTerm(-K[k].getCapacity()[r], x[i][j][k]);
-//									expr1.addTerm(-100, x[i][j][k]);
-									cplex.addLe(Q[j][r][k], expr1, "Contraint10a(k" + k + ";i" + i + ";j" + j + ";r" + r + ")");
-									
-									IloLinearNumExpr expr2 = cplex.linearNumExpr();
-									expr2.addTerm(1.0, Q[i][r][k]);
-									expr2.setConstant(V[j].getLoad()[r] - K[k].getCapacity()[r]);
-//									expr2.setConstant(N[j].getLoad()[r] - 100);
-									expr2.addTerm(K[k].getCapacity()[r], x[i][j][k]);
-//									expr2.addTerm(100, x[i][j][k]);
-									cplex.addGe(Q[j][r][k], expr2, "Constraint10b(k" + k + ";i" + i + ";j" + j + ";r" + r + ")");
-//								}
-//									}
-//								}
-							}
 						}
 					}
 				}
@@ -353,73 +412,6 @@ public class model {
 				}
 			}
 
-			// Constraint 13 Cordeau: impose capacity constraint
-			// Constraint 11 Pesch
-			// Cordeau
-//			for (int i = 0; i < N.length; i++) {
-//				for (int k = 0; k < K.length; k++) {
-//					for (int r = 0; r <= 3; r++) {
-//						cplex.addLe(Math.max(0, N[i].getLoad()[r]), Q[i][r][k], "Constraint13_1");
-//						cplex.addLe(Q[i][r][k],
-//								Math.min(K[k].getCapacity()[r], K[k].getCapacity()[r] + N[i].getLoad()[r]),
-//								"Constraint13_2");
-//					}
-//				}
-//			}
-
-			// Pesch
-			for (int k = 0; k < K.length; k++) {
-				for (int i = 0; i < V.length; i++) {
-					for (int r = 0; r <= 3; r++) {
-						cplex.addLe(0.0, Q[i][r][k], "Constraint11_1");
-						cplex.addLe(Q[i][r][k], K[k].getCapacity()[r], "Constraint11_2");
-					}
-				}
-			}
-
-			// Constraint 12 Pesch: Leere und volle 30 Fuß Container dürfen die Kapazität des LKWs
-			// nicht überschreiten. Bsp. Ein LKW kann nicht 2 volle 30 Fuß Container und 2 
-			// leere 30 Fuß Container laden, da er nur Platz für insgesamt 2 Container hat.
-			for (int k = 0; k < K.length; k++) {
-				for (int i = 1; i <= 2 * n; i++) {
-					IloLinearNumExpr expr = cplex.linearNumExpr();
-					expr.addTerm(1.0, Q[i][0][k]);
-					expr.addTerm(1.0, Q[i][1][k]);
-					cplex.addLe(expr, K[k].getCapacity()[0], "Constraint12");
-				}
-			}
-
-			// Constraint 13 Pesch: Leere und volle 60 Fuß Container zusammen dürfen die Kapazität
-			// des LKWs nicht übeschreiten. Bsp.: Es kann nicht ein voller und ein leerer 60"
-			// Container gleichzeitig geladen sein.
-			for (int k = 0; k < K.length; k++) {
-				for (int i = 0; i <= 2 * n; i++) {
-					IloLinearNumExpr expr = cplex.linearNumExpr();
-					expr.addTerm(1.0, Q[i][2][k]);
-					expr.addTerm(1.0, Q[i][3][k]);
-					cplex.addLe(expr, K[k].getCapacity()[2], "Constraint13");
-				}
-			}
-
-			// Constraint 14 Pesch: Start with empty
-			// Constraint 14 und 15 haben den Algorithmus doppelt so schnell gemacht.
-			// Beide Constraints sind aber nicht notwendig.
-			// Pesch
-			for (int k = 0; k < K.length; k++) {
-				for (int r = 0; r <= 3; r++) {
-					cplex.addEq(Q[0][r][k], 0.0, "Constraint14");
-				}
-			}
-
-			// Constraint 15 Pesch: Route beenden ohne container.
-			// Constraint 14 und 15 haben den Algorithmus doppelt so schnell gemacht.
-			// Beide Constraints sind aber nicht notwendig.
-			// Pesch
-			for (int k = 0; k < K.length; k++) {
-				for (int r = 0; r <= 3; r++) {
-					cplex.addEq(Q[V.length - 1][r][k], 0.0, "Constraint15");
-				}
-			}
 
 			// Exportieren des Modells
 			cplex.exportModel("Cordeau.lp");
