@@ -38,8 +38,8 @@ public class model {
 
 		// Alle Trucks müssen die selben Container transportieren können.
 		K = new Truck[2];
-		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 500, 10);
-		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 1500, 15);
+		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 500, 5);
+		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 1500, 10);
 //		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000, 10); // Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
 															// infeasibility column 'Q(i1;k2)'.
 
@@ -110,7 +110,7 @@ public class model {
 						}
 					}
 				}
-				cplex.addEq(expr, 1.0, "Constraint2");
+				cplex.addEq(expr, 1.0, "Constraint2Pesch");
 			}
 			
 			// Constraint 3 Pesch: Es darf nur eine Kante in einen pick up oder dropdown Node führen.
@@ -123,7 +123,7 @@ public class model {
 						}
 					}
 				}
-				cplex.addEq(1.0, expr, "Constraint3");
+				cplex.addEq(1.0, expr, "Constraint3Pesch");
 			}
 
 			// Constraint 4 Pesch: visit pickup and dropdown depot by the same vehicle.
@@ -141,7 +141,7 @@ public class model {
 						if (n+i != j)
 							expr.addTerm(-1.0, x[n + i][j][k]);
 					}
-					cplex.addEq(expr, 0.0, "Constraint4");
+					cplex.addEq(expr, 0.0, "Constraint4Pesch");
 				}
 			}
 
@@ -167,7 +167,7 @@ public class model {
 									expr.addTerm(-1.0, x[i][j][k]);
 								}
 							}
-							cplex.addEq(expr, 0.0, "Constraint5");
+							cplex.addEq(expr, 0.0, "Constraint5Pesch");
 						}
 					}
 				}
@@ -182,7 +182,7 @@ public class model {
 						expr.addTerm(1.0, x[0][j][k]);
 					}
 				}
-				cplex.addEq(expr, 1.0, "Constraint7");
+				cplex.addEq(expr, 1.0, "Constraint7Pesch");
 			}
 
 			// Constraint 9 Pesch: End Route at destination depot.
@@ -194,7 +194,7 @@ public class model {
 						expr.addTerm(1.0, x[i][2 * n + f + 1][k]);
 					}
 				}
-				cplex.addEq(expr, 1.0, "Constraint9");
+				cplex.addEq(expr, 1.0, "Constraint9Pesch");
 			}
 			
 			// Definition Variable Q_ik: Load of vehicle k after visiting node i.
@@ -225,7 +225,7 @@ public class model {
 //								expr.addTerm(1.0, Q[i][r][k]);
 //								expr.setConstant(V[j].getLoad()[r] - W);
 //								expr.addTerm(W, x[i][j][k]);
-//								cplex.addGe(Q[j][r][k], expr, "Constraint8(i" + i + ";j" + j + ";k" + k + ";r" + r + ")");
+//								cplex.addGe(Q[j][r][k], expr, "Constraint8(i" + i + ";j" + j + ";k" + k + ";r" + r + ")Cordeau");
 //							}
 //						}
 //					}
@@ -247,13 +247,13 @@ public class model {
 								expr1.addTerm(1.0, Q[i][r][k]);
 								expr1.setConstant(V[j].getLoad()[r] + K[k].getCapacity()[r]);
 								expr1.addTerm(-K[k].getCapacity()[r], x[i][j][k]);
-								cplex.addLe(Q[j][r][k], expr1, "Contraint10a(k" + k + ";i" + i + ";j" + j + ";r" + r + ")");
+								cplex.addLe(Q[j][r][k], expr1, "Contraint10a(k" + k + ";i" + i + ";j" + j + ";r" + r + ")Pesch");
 								
 								IloLinearNumExpr expr2 = cplex.linearNumExpr();
 								expr2.addTerm(1.0, Q[i][r][k]);
 								expr2.setConstant(V[j].getLoad()[r] - K[k].getCapacity()[r]);
 								expr2.addTerm(K[k].getCapacity()[r], x[i][j][k]);
-								cplex.addGe(Q[j][r][k], expr2, "Constraint10b(k" + k + ";i" + i + ";j" + j + ";r" + r + ")");
+								cplex.addGe(Q[j][r][k], expr2, "Constraint10b(k" + k + ";i" + i + ";j" + j + ";r" + r + ")Pesch");
 							}
 						}
 					}
@@ -266,10 +266,10 @@ public class model {
 //			for (int i = 0; i < N.length; i++) {
 //				for (int k = 0; k < K.length; k++) {
 //					for (int r = 0; r <= 3; r++) {
-//						cplex.addLe(Math.max(0, N[i].getLoad()[r]), Q[i][r][k], "Constraint13_1");
+//						cplex.addLe(Math.max(0, N[i].getLoad()[r]), Q[i][r][k], "Constraint13_1Cordeau");
 //						cplex.addLe(Q[i][r][k],
 //								Math.min(K[k].getCapacity()[r], K[k].getCapacity()[r] + N[i].getLoad()[r]),
-//								"Constraint13_2");
+//								"Constraint13_2Cordeau");
 //					}
 //				}
 //			}
@@ -278,8 +278,8 @@ public class model {
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 0; i < V.length; i++) {
 					for (int r = 0; r <= 3; r++) {
-						cplex.addLe(0.0, Q[i][r][k], "Constraint11_1");
-						cplex.addLe(Q[i][r][k], K[k].getCapacity()[r], "Constraint11_2");
+						cplex.addLe(0.0, Q[i][r][k], "Constraint11_1Pesch");
+						cplex.addLe(Q[i][r][k], K[k].getCapacity()[r], "Constraint11_2Pesch");
 					}
 				}
 			}
@@ -292,7 +292,7 @@ public class model {
 					IloLinearNumExpr expr = cplex.linearNumExpr();
 					expr.addTerm(1.0, Q[i][0][k]);
 					expr.addTerm(1.0, Q[i][1][k]);
-					cplex.addLe(expr, K[k].getCapacity()[0], "Constraint12");
+					cplex.addLe(expr, K[k].getCapacity()[0], "Constraint12Pesch");
 				}
 			}
 
@@ -304,7 +304,7 @@ public class model {
 					IloLinearNumExpr expr = cplex.linearNumExpr();
 					expr.addTerm(1.0, Q[i][2][k]);
 					expr.addTerm(1.0, Q[i][3][k]);
-					cplex.addLe(expr, K[k].getCapacity()[2], "Constraint13");
+					cplex.addLe(expr, K[k].getCapacity()[2], "Constraint13Pesch");
 				}
 			}
 			
@@ -314,7 +314,7 @@ public class model {
 			// Pesch
 			for (int k = 0; k < K.length; k++) {
 				for (int r = 0; r <= 3; r++) {
-					cplex.addEq(Q[0][r][k], 0.0, "Constraint14");
+					cplex.addEq(Q[0][r][k], 0.0, "Constraint14Pesch");
 				}
 			}
 
@@ -324,7 +324,7 @@ public class model {
 			// Pesch
 			for (int k = 0; k < K.length; k++) {
 				for (int r = 0; r <= 3; r++) {
-					cplex.addEq(Q[2*n+f+1][r][k], 0.0, "Constraint15");
+					cplex.addEq(Q[2*n+f+1][r][k], 0.0, "Constraint15Pesch");
 				}
 			}
 			
@@ -357,7 +357,7 @@ public class model {
 					IloLinearNumExpr expr = cplex.linearNumExpr();
 					expr.addTerm(1.0, B[i][k]);
 					expr.setConstant(t[i][i+n]);
-					cplex.addGe(B[n+i][k], expr, "Constraint16");
+					cplex.addGe(B[n+i][k], expr, "Constraint16Pesch");
 				}
 			}
 			
@@ -373,7 +373,7 @@ public class model {
 					expr.addTerm(1.0, B[n + i][k]);
 					expr.addTerm(-1.0, B[i][k]);
 					expr.setConstant(-V[i].getServiceDuration());
-					cplex.addEq(l[i][k], expr, "Constraint17");
+					cplex.addEq(l[i][k], expr, "Constraint17Pesch");
 				}
 			}
 			
@@ -383,8 +383,8 @@ public class model {
 			// Constraint 12 Cordeau
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 1; i <= n; i++) {
-					cplex.addLe(t[i][n + i], l[i][k], "Constraint18_1");
-					cplex.addLe(l[i][k], lMaxRideTime, "Constraint18_2");
+					cplex.addLe(t[i][n + i], l[i][k], "Constraint18_1Pesch");
+					cplex.addLe(l[i][k], lMaxRideTime, "Constraint18_2Pesch");
 				}
 			}
 			
@@ -404,7 +404,7 @@ public class model {
 //							expr.addTerm(1.0, B[i][k]);
 //							expr.setConstant(V[i].getServiceDuration() + t[i][j] - M);
 //							expr.addTerm(M, x[i][j][k]);
-//							cplex.addGe(B[j][k], expr, "Constraint7");
+//							cplex.addGe(B[j][k], expr, "Constraint7Cordeau");
 //						}
 //					}
 //				}
@@ -420,14 +420,14 @@ public class model {
 							// 10000 represents Tmax.
 							expr1.setConstant(t[i][j] + V[i].getServiceDuration() + 10000);
 							expr1.addTerm(-10000, x[i][j][k]);
-							cplex.addLe(B[j][k], expr1, "Constraint19a");
+							cplex.addLe(B[j][k], expr1, "Constraint19aPesch");
 							
 							IloLinearNumExpr expr2 = cplex.linearNumExpr();
 							expr2.addTerm(1.0, B[i][k]);
 //							expr2.addTerm(t[i][j] + V[i].getServiceDuration(), x[i][j][k]);
 							expr2.setConstant(-10000 + t[i][j] + V[i].getServiceDuration());
 							expr2.addTerm(10000, x[i][j][k]);
-							cplex.addGe(B[j][k], expr2, "Constraint19b");
+							cplex.addGe(B[j][k], expr2, "Constraint19bPesch");
 						}
 					}
 				}
@@ -437,8 +437,8 @@ public class model {
 			// Constraint 11 Cordeau
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 0; i < V.length; i++) {
-					cplex.addLe(V[i].getBeginServiceTime(), B[i][k], "Constraint20_1");
-					cplex.addLe(B[i][k], V[i].getEndServiceTime(), "Constraint20_2");
+					cplex.addLe(V[i].getBeginServiceTime(), B[i][k], "Constraint20_1Pesch");
+					cplex.addLe(B[i][k], V[i].getEndServiceTime(), "Constraint20_2Pesch");
 				}
 			}
 			
@@ -449,7 +449,7 @@ public class model {
 				IloLinearNumExpr expr = cplex.linearNumExpr();
 				expr.addTerm(1.0, B[2 * n + f + 1][k]);
 				expr.addTerm(-1.0, B[0][k]);
-				cplex.addLe(expr, K[k].getMaxTourTime(), "Constraint21");
+				cplex.addLe(expr, K[k].getMaxTourTime(), "Constraint21Pesch");
 			}
 			
 			
@@ -461,70 +461,111 @@ public class model {
 			}
 			
 			
-			// Constraint 22 Pesch : Fuel Capacity verringert sich mit jedem besuchten Knoten.
-			// FIXME: Funktioniert nicht. Im ersten Versuch wurde der Spritverbrauch nicht reduziert.
+//			// Constraint 22 Pesch : Fuel Capacity verringert sich mit jedem besuchten Knoten.
+//			// FIXME: Funktioniert nicht. Im ersten Versuch wurde der Spritverbrauch nicht reduziert.
+//			for (int k = 0; k < K.length; k++) {
+//				for (int i = 0; i < V.length; i++) {
+//					for (int j = 0; j < V.length; j++) {
+//						if (i != j) {
+//							IloLinearNumExpr expr = cplex.linearNumExpr();
+//							expr.setConstant(K[k].getFuelCapacity());
+//							expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
+//							expr.addTerm(1.0, z[i][k]);
+//							expr.addTerm(1.0, z[j][k]);
+//							//FR ist 1.
+//							expr.addTerm(-c[i][j], x[i][j][k]);
+//							cplex.addGe(expr, 0.0, "Constraint22Pesch");
+//						}
+//					}
+//				}
+//			}
+//			
+//			
+//			//Constraint 23 Pesch: Guarantee that remaining fuel is enough to reach an AFS.
+//			for (int k = 0; k < K.length; k++) {
+//				for (int i = 0; i <= 2*n; i++) {
+//					for (int j = 2*n+1; j < 2*n+f; j++) {
+//						if (i != j) {
+//							IloLinearNumExpr expr = cplex.linearNumExpr();
+//							expr.setConstant(K[k].getFuelCapacity());
+//							expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
+//							expr.addTerm(1.0, z[i][k]);
+//							expr.addTerm(-1.0, z[j][k]);
+//							expr.addTerm(-c[i][j], x[i][j][k]);
+//							cplex.addGe(expr, 0.0, "Constraint23Pesch");
+//						}
+//					}
+//				}
+//			}
+//			
+//			// Constraint 24 Pesch: Set z to fuelCapacity of the vehicle.
+//			// Eigene Linearisierung
+//			for (int i = 0; i < V.length; i++) {
+//				for (int j = 2*n+1; j <= 2*n+f; j++) {
+//					if (i != j) {
+//						for (int k = 0; k < K.length; k++) {
+//							IloLinearNumExpr expr = cplex.linearNumExpr();
+//							expr.addTerm(1.0, z[j][k]);
+//							expr.setConstant(-K[k].getFuelCapacity());
+//							expr.addTerm(K[k].getFuelCapacity(), x[i][j][k]);
+//							cplex.addLe(expr, 15.0, "Constraint24Pesch");
+//						}
+//					}
+//				}
+//			}
+//			
+//			// Constraint 25 Pesch: Set Fuel level on start depot to fuelCapacity.
+//			// Geht das überhaupt oder muss dort x = 1 => Constraint, wie bei Constraint 24.
+//			// Das ist eine sinnlose Angelegenheit, da eine Route maximal einmal (nämlich beim Start)
+//			// beim Startdepot vorbeikommt. Tanken am Startdepot ist also nicht.
+//			for (int k = 0; k < K.length; k++) {
+//				cplex.addEq(z[0][k], K[k].getFuelCapacity(), "Constraint25Pesch");
+//			}
+//			
+//			// Constraint 26 Groos: Set Fuel level on destination depot to fuelCapacity.
+//			// Geht das überhaupt oder muss dort x = 1 => Constraint, wie bei Constraint 24.
+//			// Genauso wie Constraint 25 ist dieser hier sinnlose, da eine Route genau einmal
+//			// beim Zieldepot vorbeikommt. Tanken am Zieldepot ist also ausgeschlossen.
+//			for (int k = 0; k < K.length; k++) {
+//				cplex.addEq(z[2*n+f+1][k], K[k].getFuelCapacity(), "Constraint26Groos");
+//			}
+			
+			//Constraint 10 Erdogan: Reduce Fuel based on traveled distance
+			for (int k = 0; k < K.length; k++) {
+				// Hier müsste meiner Meinung nach j = 0 bis j < V.length hin, da es für 
+				// alle Knoten und nicht nur für die Kunden gelten soll.
+				for (int j = 1; j <= 2*n; j++) {
+					for (int i = 0; i < V.length; i++) {
+						if (i != j) {
+							IloLinearNumExpr expr = cplex.linearNumExpr();
+							expr.addTerm(1.0, z[i][k]);
+							expr.addTerm(-c[i][j], x[i][j][k]);
+							expr.setConstant(K[k].getFuelCapacity());
+							expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
+							cplex.addLe(z[j][k], expr, "Constraint10Erdogan");
+						}
+					}
+				}
+			}
+			
+			// Constraint 11 Erdogan: Set fuel level on max. fuel level when visiting an AFS.
+			for (int j = 2*n+1; j <= 2*n+f; j++) {
+				for (int k = 0; k < K.length; k++) {
+					cplex.addEq(z[j][k], K[k].getFuelCapacity(),"Constraint11Erdogan");
+				}
+			}
+			
+			// Constraint 12 Erdogan: Remaining fuel must be sufficient to reach destination depot or AFS
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 0; i < V.length; i++) {
-					for (int j = 0; j < V.length; j++) {
+					for (int j = 2*n+1; j <= 2*n+f; j++) {
 						if (i != j) {
-							IloLinearNumExpr expr = cplex.linearNumExpr();
-							expr.setConstant(K[k].getFuelCapacity());
-							expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
-							expr.addTerm(1.0, z[i][k]);
-							expr.addTerm(1.0, z[j][k]);
-							//FR ist 1.
-							expr.addTerm(-c[i][j], x[i][j][k]);
-							cplex.addGe(expr, 0.0, "Constraint22");
+							cplex.addGe(z[i][k], Math.min(c[i][j], c[i][2*n+f+1]), "Constraint12Erdogan");
 						}
 					}
 				}
 			}
 			
-			
-			//Constraint 23 Pesch: Guarantee that remaining fuel is enough to reach an AFS.
-			for (int k = 0; k < K.length; k++) {
-				for (int i = 0; i <= 2*n; i++) {
-					for (int j = 2*n+1; j < 2*n+f; j++) {
-						if (i != j) {
-							IloLinearNumExpr expr = cplex.linearNumExpr();
-							expr.setConstant(K[k].getFuelCapacity());
-							expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
-							expr.addTerm(1.0, z[i][k]);
-							expr.addTerm(-1.0, z[j][k]);
-							expr.addTerm(-c[i][j], x[i][j][k]);
-							cplex.addGe(expr, 0.0, "Constraint23");
-						}
-					}
-				}
-			}
-			
-			// Constraint 24 Pesch: Set z to fuelCapacity of the vehicle.
-			// Eigene Linearisierung
-			for (int i = 0; i < V.length; i++) {
-				for (int j = 2*n+1; j <= 2*n+f; j++) {
-					if (i != j) {
-						for (int k = 0; k < K.length; k++) {
-							IloLinearNumExpr expr = cplex.linearNumExpr();
-							expr.addTerm(1.0, z[j][k]);
-							expr.setConstant(-K[k].getFuelCapacity());
-							expr.addTerm(K[k].getFuelCapacity(), x[i][j][k]);
-							cplex.addLe(expr, 15.0, "Constraint24");
-						}
-					}
-				}
-			}
-			
-			// Constraint 25 Pesch: Set Fuel level on start depot to fuelCapacity.
-			// Geht das überhaupt oder muss dort x = 1 => Constraint, wie bei Constraint 24.
-			for (int k = 0; k < K.length; k++) {
-				cplex.addEq(z[0][k], K[k].getFuelCapacity(), "Constraint25");
-			}
-			
-			// Constraint 25 Thorben: Set Fuel level on destination depot to fuelCapacity.
-			// Geht das überhaupt oder muss dort x = 1 => Constraint, wie bei Constraint 24.
-			for (int k = 0; k < K.length; k++) {
-				cplex.addEq(z[2*n+f+1][k], K[k].getFuelCapacity(), "Constraint26");
-			}
 
 
 			// Exportieren des Modells
