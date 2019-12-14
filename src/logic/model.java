@@ -38,8 +38,8 @@ public class model {
 
 		// Alle Trucks müssen die selben Container transportieren können.
 		K = new Truck[2];
-		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 500, 5);
-		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 1500, 10);
+		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 6000, 5);
+		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 1400, 10);
 //		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000, 10); // Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
 															// infeasibility column 'Q(i1;k2)'.
 
@@ -336,7 +336,7 @@ public class model {
 			B = new IloNumVar[V.length][K.length];
 			for (int i = 0; i < V.length; i++) {
 				for (int k = 0; k < K.length; k++) {
-					B[i][k] = cplex.numVar(0, 1440, "ServiceTimeB(i" + i + ";k" + k + ")");
+					B[i][k] = cplex.numVar(V[i].getBeginServiceTime(), V[i].getEndServiceTime(), "ServiceTimeB(i" + i + ";k" + k + ")");
 				}
 			}
 
@@ -614,29 +614,29 @@ public class model {
 
 		V = new Node[15];
 		// The start node.
-		V[0] = new Node(1, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
+		V[0] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
 
 		// The pick up nodes.
-		V[1] = new Node(1, 1, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
-		V[2] = new Node(1, 4, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
-		V[3] = new Node(4, 3, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
-		V[4] = new Node(2, 2, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
-		V[5] = new Node(2, 4, 0, 1440, new int[] { 1, 0, 0, 0 }, 30);
+		V[1] = new Node(1, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		V[2] = new Node(1, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		V[3] = new Node(4, 3, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		V[4] = new Node(2, 2, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		V[5] = new Node(2, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 
 		// The drop down nodes.
-		V[6] = new Node(4, 1, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
-		V[7] = new Node(4, 4, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
-		V[8] = new Node(1, 3, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
-		V[9] = new Node(3, 4, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
-		V[10] = new Node(3, 1, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
+		V[6] = new Node(4, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		V[7] = new Node(4, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		V[8] = new Node(1, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		V[9] = new Node(3, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		V[10] = new Node(3, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
 
 		// AFS
-		V[11] = new Node(2, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
-		V[12] = new Node(4, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
-		V[13] = new Node(3, 3, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
+		V[11] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[12] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[13] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
 		
 		// The end depot.
-		V[14] = new Node(3, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
+		V[14] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
 	}
 
 	private static void solveModel() {
