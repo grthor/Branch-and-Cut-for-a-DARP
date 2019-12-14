@@ -383,8 +383,8 @@ public class model {
 			// Constraint 12 Cordeau
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 1; i <= n; i++) {
-					cplex.addLe(t[i][n + i], l[i][k], "Constraint12_1");
-					cplex.addLe(l[i][k], lMaxRideTime, "Constraint12_2");
+					cplex.addLe(t[i][n + i], l[i][k], "Constraint18_1");
+					cplex.addLe(l[i][k], lMaxRideTime, "Constraint18_2");
 				}
 			}
 			
@@ -410,7 +410,7 @@ public class model {
 //				}
 //			}
 			
-			//Pesch ist besser als Cordeau, da die Dauer einer Route richtig angezeigt wird.
+			//Pesch
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 0; i < V.length; i++) {
 					for (int j = 0; j < V.length; j++) {
@@ -475,7 +475,7 @@ public class model {
 	 * @return The next node on the route.
 	 */
 	public static int getNextNode(int row, int truck) {
-		for (int i = 0; i <= 2 * n + 1; i++) {
+		for (int i = 0; i < V.length; i++) {
 			try {
 				if (i != row) {
 					if (Math.round(cplex.getValue(x[row][i][truck])) == 1) {
@@ -498,9 +498,9 @@ public class model {
 	 */
 	public static void setDefaultNodes() {
 		n = 5;
-		f = 0;
+		f = 3;
 
-		V = new Node[12];
+		V = new Node[15];
 		// The start node.
 		V[0] = new Node(1, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
 
@@ -518,8 +518,13 @@ public class model {
 		V[9] = new Node(3, 4, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
 		V[10] = new Node(3, 1, 0, 1440, new int[] { -1, 0, 0, 0 }, 30);
 
+		// AFS
+		V[11] = new Node(2, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
+		V[12] = new Node(4, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
+		V[13] = new Node(3, 3, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
+		
 		// The end depot.
-		V[11] = new Node(3, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
+		V[14] = new Node(3, 2, 0, 1440, new int[] { 0, 0, 0, 0 }, 0);
 	}
 
 	private static void solveModel() {
@@ -536,7 +541,7 @@ public class model {
 
 				for (int k = 0; k < K.length; k++) {
 					System.out.println("Solution for Truck " + k);
-					for (int i = 0; i <= 2 * n + 1; i++) {
+					for (int i = 0; i < V.length; i++) {
 						System.out.print("\t" + i);
 					}
 					System.out.println();
@@ -558,12 +563,12 @@ public class model {
 					}
 
 					System.out.println("Route duration for Truck " + k + ": "
-							+ Math.round(cplex.getValue(B[2 * n + 1][k])) + " minutes.");
+							+ Math.round(cplex.getValue(B[2 * n + f + 1][k])) + " minutes.");
 
 					int nextNode = getNextNode(0, k);
 					System.out.print("Route: 0 -> ");
 					while (nextNode != 0) {
-						if (nextNode != 2 * n + 1) {
+						if (nextNode != 2 * n + f + 1) {
 							System.out.print(nextNode + " -> ");
 						} else {
 							System.out.print(nextNode);
