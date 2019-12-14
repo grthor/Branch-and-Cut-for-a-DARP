@@ -38,9 +38,9 @@ public class model {
 
 		// Alle Trucks müssen die selben Container transportieren können.
 		K = new Truck[2];
-		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 500);
-		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 1500);
-//		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000); // Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
+		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 500, 10);
+		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 1500, 15);
+//		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000, 10); // Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
 															// infeasibility column 'Q(i1;k2)'.
 
 		// c enthält die Distanz zwischen allen Knoten
@@ -442,9 +442,6 @@ public class model {
 				}
 			}
 			
-			
-			
-
 			// Constraint 21 Pesch: Dauer einer Tour darf die maximale
 			// Tourzeit eines LKWs nicht überschreiten.
 			// Constraint 10 Cordeau
@@ -453,6 +450,80 @@ public class model {
 				expr.addTerm(1.0, B[2 * n + f + 1][k]);
 				expr.addTerm(-1.0, B[0][k]);
 				cplex.addLe(expr, K[k].getMaxTourTime(), "Constraint21");
+			}
+			
+			
+			IloNumVar[][] z = new IloNumVar[V.length][K.length];
+			for (int i = 0; i < V.length; i++) {
+				for (int k = 0; k < K.length; k++) {
+					z[i][k] = cplex.numVar(0, K[k].getFuelCapacity(), "z(i" + i + ";k" + k + ")");
+				}
+			}
+			
+			
+			// Constraint 22 Pesch : Fuel Capacity verringert sich mit jedem besuchten Knoten.
+			// FIXME: Funktioniert nicht. Im ersten Versuch wurde der Spritverbrauch nicht reduziert.
+			for (int k = 0; k < K.length; k++) {
+				for (int i = 0; i < V.length; i++) {
+					for (int j = 0; j < V.length; j++) {
+						if (i != j) {
+							IloLinearNumExpr expr = cplex.linearNumExpr();
+							expr.setConstant(K[k].getFuelCapacity());
+							expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
+							expr.addTerm(1.0, z[i][k]);
+							expr.addTerm(1.0, z[j][k]);
+							//FR ist 1.
+							expr.addTerm(-c[i][j], x[i][j][k]);
+							cplex.addGe(expr, 0.0, "Constraint22");
+						}
+					}
+				}
+			}
+			
+			
+			//Constraint 23 Pesch: Guarantee that remaining fuel is enough to reach an AFS.
+			for (int k = 0; k < K.length; k++) {
+				for (int i = 0; i <= 2*n; i++) {
+					for (int j = 2*n+1; j < 2*n+f; j++) {
+						if (i != j) {
+							IloLinearNumExpr expr = cplex.linearNumExpr();
+							expr.setConstant(K[k].getFuelCapacity());
+							expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
+							expr.addTerm(1.0, z[i][k]);
+							expr.addTerm(-1.0, z[j][k]);
+							expr.addTerm(-c[i][j], x[i][j][k]);
+							cplex.addGe(expr, 0.0, "Constraint23");
+						}
+					}
+				}
+			}
+			
+			// Constraint 24 Pesch: Set z to fuelCapacity of the vehicle.
+			// Eigene Linearisierung
+			for (int i = 0; i < V.length; i++) {
+				for (int j = 2*n+1; j <= 2*n+f; j++) {
+					if (i != j) {
+						for (int k = 0; k < K.length; k++) {
+							IloLinearNumExpr expr = cplex.linearNumExpr();
+							expr.addTerm(1.0, z[j][k]);
+							expr.setConstant(-K[k].getFuelCapacity());
+							expr.addTerm(K[k].getFuelCapacity(), x[i][j][k]);
+							cplex.addLe(expr, 15.0, "Constraint24");
+						}
+					}
+				}
+			}
+			
+			// Constraint 25 Pesch: Set Fuel level on start depot to fuelCapacity.
+			// Geht das überhaupt oder muss dort x = 1 => Constraint, wie bei Constraint 24.
+			for (int k = 0; k < K.length; k++) {
+				cplex.addEq(z[0][k], K[k].getFuelCapacity(), "Constraint25");
+			}
+			
+			// Constraint 25 Thorben: Set Fuel level on destination depot to fuelCapacity.
+			// Geht das überhaupt oder muss dort x = 1 => Constraint, wie bei Constraint 24.
+			for (int k = 0; k < K.length; k++) {
+				cplex.addEq(z[2*n+f+1][k], K[k].getFuelCapacity(), "Constraint26");
 			}
 
 

@@ -11,15 +11,22 @@ public class Truck {
 	 */
 	private int[] capacity = new int[4];
 	private int maxTourTime;
+	private int fuelCapacity;
 	
-	
-	public Truck(int[] capacity, int maxTourTime) {
+	public Truck(int[] capacity, int maxTourTime, int fuelCapacity) {
 		super();
 		this.capacity = capacity;
 		this.maxTourTime = maxTourTime;
+		this.fuelCapacity = fuelCapacity;
 	}
 	
 	
+	public int getFuelCapacity() {
+		return fuelCapacity;
+	}
+	public void setFuelCapacity(int fuelCapacity) {
+		this.fuelCapacity = fuelCapacity;
+	}
 	public int[] getCapacity() {
 		return capacity;
 	}
