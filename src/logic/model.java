@@ -67,7 +67,8 @@ public class model {
 		try {
 			cplex = new IloCplex();
 
-			// Binary decision variable.
+			// Constraint 26 Pesch:Binary decision variable.
+			// Constraint 14 Cordeau
 			x = new IloNumVar[V.length][V.length][K.length];
 			for (int i = 0; i < V.length; i++) {
 				for (int j = 0; j < V.length; j++) {
@@ -323,7 +324,7 @@ public class model {
 			// Pesch
 			for (int k = 0; k < K.length; k++) {
 				for (int r = 0; r <= 3; r++) {
-					cplex.addEq(Q[V.length - 1][r][k], 0.0, "Constraint15");
+					cplex.addEq(Q[2*n+f+1][r][k], 0.0, "Constraint15");
 				}
 			}
 			
@@ -339,77 +340,119 @@ public class model {
 				}
 			}
 
-			// Constraint 7: Der Service an Knoten j kann erst beginnen,
-			// nachdem der Service an Knoten i abgeschlossen wurde und der
-			// LKW von i nach j gefahren ist.
-			double M;
-			for (int i = 0; i < V.length; i++) {
-				for (int j = 0; j < V.length; j++) {
-					if (i != j) {
-						for (int k = 0; k < K.length; k++) {
-							IloLinearNumExpr expr = cplex.linearNumExpr();
-							M = Math.max(0, V[i].getEndServiceTime() + V[i].getServiceDuration() + t[i][j]
-									- V[j].getBeginServiceTime());
-							expr.addTerm(1.0, B[i][k]);
-							expr.setConstant(V[i].getServiceDuration() + t[i][j] - M);
-							expr.addTerm(M, x[i][j][k]);
-							cplex.addGe(B[j][k], expr, "Constraint7");
-						}
-					}
-				}
-			}
-
 			// Maximum ride time of a user: For example 180 Minutes.
 			double lMaxRideTime = 360;
 
-			// Definition L_i^k: The ride time of user i on vehicle k.
-			IloNumVar[][] L = new IloNumVar[V.length][K.length];
+			// Definition l_i^k: The ride time of user i on vehicle k.
+			IloNumVar[][] l = new IloNumVar[V.length][K.length];
 			for (int i = 1; i <= n; i++) {
 				for (int k = 0; k < K.length; k++) {
-					L[i][k] = cplex.numVar(0, lMaxRideTime, "L(i" + i + ";k" + k + ")");
+					l[i][k] = cplex.numVar(0, lMaxRideTime, "l(i" + i + ";k" + k + ")");
 				}
 			}
+			
+			// Constraint 16 Pesch: Presedence Relation with Constraits 17 and 18.
+			for (int k = 0; k < K.length; k++) {
+				for (int i = 1; i <= n; i++) {
+					IloLinearNumExpr expr = cplex.linearNumExpr();
+					expr.addTerm(1.0, B[i][k]);
+					expr.setConstant(t[i][i+n]);
+					cplex.addGe(B[n+i][k], expr, "Constraint16");
+				}
+			}
+			
 
-			// Constraint 9 Cordeau: Set the ride time of each user.
+			// Constraint 17 Pesch: Set the ride time of each user.
 			// Ride time of user i in vehicle k (L_i^k)
 			// ist gleich Ride Time of user i + n minus (Ride time in
 			// i plus service time in i).
-			for (int i = 1; i <= n; i++) {
-				for (int k = 0; k < K.length; k++) {
+			// Constraint 9 Cordeau
+			for (int k = 0; k < K.length; k++) {
+				for (int i = 1; i <= n; i++) {
 					IloLinearNumExpr expr = cplex.linearNumExpr();
 					expr.addTerm(1.0, B[n + i][k]);
 					expr.addTerm(-1.0, B[i][k]);
 					expr.setConstant(-V[i].getServiceDuration());
-					cplex.addEq(L[i][k], expr, "Constraint9");
+					cplex.addEq(l[i][k], expr, "Constraint17");
 				}
 			}
-
-			// Constraint 10 Cordeau: Dauer einer Tour darf die maximale
-			// Tourzeit eines LKWs nicht überschreiten.
-			for (int k = 0; k < K.length; k++) {
-				IloLinearNumExpr expr = cplex.linearNumExpr();
-				expr.addTerm(1.0, B[2 * n + 1][k]);
-				expr.addTerm(-1.0, B[0][k]);
-				cplex.addLe(expr, K[k].getMaxTourTime(), "Constraint10");
-			}
-
-			// Constraint 11 Cordeau: Knoten müssen innerhalb ihrer Servicezeit besucht werden.
-			// Constraint 20 Pesch
-			for (int i = 0; i < V.length; i++) {
-				for (int k = 0; k < K.length; k++) {
-					cplex.addLe(V[i].getBeginServiceTime(), B[i][k], "Constraint11_1");
-					cplex.addLe(B[i][k], V[i].getEndServiceTime(), "Constraint11_2");
-				}
-			}
-
-			// Constraint 12: Ride time jedes users muss größer als
+			
+			// Constraint 18 Pesch: Ride time jedes Users muss größer als
 			// die Fahrzeit von Knoten i nach Knoten j sein und kleiner als
 			// der maximal erlaubte Fahrzeit.
-			for (int i = 1; i <= n; i++) {
-				for (int k = 0; k < K.length; k++) {
-					cplex.addLe(t[i][n + i], L[i][k], "Constraint12_1");
-					cplex.addLe(L[i][k], lMaxRideTime, "Constraint12_2");
+			// Constraint 12 Cordeau
+			for (int k = 0; k < K.length; k++) {
+				for (int i = 1; i <= n; i++) {
+					cplex.addLe(t[i][n + i], l[i][k], "Constraint12_1");
+					cplex.addLe(l[i][k], lMaxRideTime, "Constraint12_2");
 				}
+			}
+			
+			// Constraint 19 Pesch: Der Service an Knoten j kann erst beginnen,
+			// nachdem der Service an Knoten i abgeschlossen wurde und der
+			// LKW von i nach j gefahren ist.
+			// Constraint 7 Cordeau
+			//Cordeau
+//			double M;
+//			for (int i = 0; i < V.length; i++) {
+//				for (int j = 0; j < V.length; j++) {
+//					if (i != j) {
+//						for (int k = 0; k < K.length; k++) {
+//							IloLinearNumExpr expr = cplex.linearNumExpr();
+//							M = Math.max(0, V[i].getEndServiceTime() + V[i].getServiceDuration() + t[i][j]
+//									- V[j].getBeginServiceTime());
+//							expr.addTerm(1.0, B[i][k]);
+//							expr.setConstant(V[i].getServiceDuration() + t[i][j] - M);
+//							expr.addTerm(M, x[i][j][k]);
+//							cplex.addGe(B[j][k], expr, "Constraint7");
+//						}
+//					}
+//				}
+//			}
+			
+			//Pesch ist besser als Cordeau, da die Dauer einer Route richtig angezeigt wird.
+			for (int k = 0; k < K.length; k++) {
+				for (int i = 0; i < V.length; i++) {
+					for (int j = 0; j < V.length; j++) {
+						if (i != j) {
+							IloLinearNumExpr expr1 = cplex.linearNumExpr();
+							expr1.addTerm(1.0, B[i][k]);
+							// 10000 represents Tmax.
+							expr1.setConstant(t[i][j] + V[i].getServiceDuration() + 10000);
+							expr1.addTerm(-10000, x[i][j][k]);
+							cplex.addLe(B[j][k], expr1, "Constraint19a");
+							
+							IloLinearNumExpr expr2 = cplex.linearNumExpr();
+							expr2.addTerm(1.0, B[i][k]);
+//							expr2.addTerm(t[i][j] + V[i].getServiceDuration(), x[i][j][k]);
+							expr2.setConstant(-10000 + t[i][j] + V[i].getServiceDuration());
+							expr2.addTerm(10000, x[i][j][k]);
+							cplex.addGe(B[j][k], expr2, "Constraint19b");
+						}
+					}
+				}
+			}
+			
+			// Constraint 20 Pesch: Knoten müssen innerhalb ihrer Servicezeit besucht werden.
+			// Constraint 11 Cordeau
+			for (int k = 0; k < K.length; k++) {
+				for (int i = 0; i < V.length; i++) {
+					cplex.addLe(V[i].getBeginServiceTime(), B[i][k], "Constraint20_1");
+					cplex.addLe(B[i][k], V[i].getEndServiceTime(), "Constraint20_2");
+				}
+			}
+			
+			
+			
+
+			// Constraint 21 Pesch: Dauer einer Tour darf die maximale
+			// Tourzeit eines LKWs nicht überschreiten.
+			// Constraint 10 Cordeau
+			for (int k = 0; k < K.length; k++) {
+				IloLinearNumExpr expr = cplex.linearNumExpr();
+				expr.addTerm(1.0, B[2 * n + f + 1][k]);
+				expr.addTerm(-1.0, B[0][k]);
+				cplex.addLe(expr, K[k].getMaxTourTime(), "Constraint21");
 			}
 
 
