@@ -19,6 +19,7 @@ public class model {
 	private static IloNumVar[][][] x;
 	private static Node[] V;
 	private static Truck[] K;
+	private static double[][] c;
 
 	private static IloNumVar[][] B;
 
@@ -44,7 +45,7 @@ public class model {
 															// infeasibility column 'Q(i1;k2)'.
 
 		// c enthält die Distanz zwischen allen Knoten
-		double[][] c = new double[V.length][V.length];
+		c = new double[V.length][V.length];
 		// t enthält die Fahrzeit zwischen allen Knoten.
 		double[][] t = new double[V.length][V.length];
 
@@ -644,6 +645,7 @@ public class model {
 			// Solve the model
 			if (cplex.solve()) {
 				// Print the result
+				System.out.println();
 				System.out.println("Solution status: " + cplex.getStatus());
 				System.out.println("--------------------------------------------");
 				System.out.println();
@@ -673,28 +675,39 @@ public class model {
 						}
 						System.out.println();
 					}
+					System.out.println();
 
+					int node = getNextNode(0, k);
+					double distance = c[0][node];
+//					int tempNode = 0;
+					System.out.print("Route: 0 -> ");
+					while (node != 0) {						
+						if (node != 2 * n + f + 1) {
+							System.out.print(node + " -> ");
+						} else {
+							System.out.print(node);
+						}
+//						tempNode = node;
+						node = getNextNode(node, k);
+//						distance += c[tempNode][node];
+					}
+					
+					System.out.println();
+					
 					System.out.println("Route duration for Truck " + k + ": "
 							+ Math.round(cplex.getValue(B[2 * n + f + 1][k])) + " minutes.");
 
-					int nextNode = getNextNode(0, k);
-					System.out.print("Route: 0 -> ");
-					while (nextNode != 0) {
-						if (nextNode != 2 * n + f + 1) {
-							System.out.print(nextNode + " -> ");
-						} else {
-							System.out.print(nextNode);
-						}
-						nextNode = getNextNode(nextNode, k);
-					}
+					System.out.println("Route distance for Truck " + k + ": " + distance + ".");
+					
 					System.out.println();
-					nextNode = getNextNode(0, k);
+					
+					node = getNextNode(0, k);
 					System.out.println("Knoten\txPosition\tyPosition");
 					System.out.println("0\t" + V[0].getxPosition() + "\t" + V[0].getyPosition());
-					while (nextNode != 0) {
+					while (node != 0) {
 						System.out.println(
-								nextNode + "\t" + V[nextNode].getxPosition() + "\t" + V[nextNode].getyPosition());
-						nextNode = getNextNode(nextNode, k);
+								node + "\t" + V[node].getxPosition() + "\t" + V[node].getyPosition());
+						node = getNextNode(node, k);
 					}
 					System.out.println();
 				}
