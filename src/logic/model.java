@@ -22,6 +22,7 @@ public class model {
 	private static double[][] c;
 
 	private static IloNumVar[][] B;
+	private static IloNumVar[][] z;
 
 	public static void main(String[] args) {
 
@@ -38,10 +39,12 @@ public class model {
 //		}
 
 		// Alle Trucks müssen die selben Container transportieren können.
-		K = new Truck[2];
-		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 6000, 5);
-		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 1400, 10);
-//		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000, 10); // Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
+		K = new Truck[4];
+		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 600, 5);
+		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 2000, 8);
+		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000, 5); 
+		K[3] = new Truck(new int[] { 1, 0, 0, 0 }, 300, 5); 
+		// Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
 															// infeasibility column 'Q(i1;k2)'.
 
 		// c enthält die Distanz zwischen allen Knoten
@@ -102,7 +105,7 @@ public class model {
 			// Cordeau geht von 1..n, Pesch von 1..2n
 			// Von 1..n ist schneller aus von 1..2n.
 			// Beides funktioniert.
-			for (int i = 1; i <= 2*n; i++) {
+			for (int i = 1; i <= n; i++) {
 				IloLinearNumExpr expr = cplex.linearNumExpr();
 				for (int k = 0; k < K.length; k++) {
 					for (int j = 0; j < V.length; j++) {
@@ -454,7 +457,7 @@ public class model {
 			}
 			
 			
-			IloNumVar[][] z = new IloNumVar[V.length][K.length];
+			z = new IloNumVar[V.length][K.length];
 			for (int i = 0; i < V.length; i++) {
 				for (int k = 0; k < K.length; k++) {
 					z[i][k] = cplex.numVar(0, K[k].getFuelCapacity(), "z(i" + i + ";k" + k + ")");
@@ -611,21 +614,21 @@ public class model {
 	 */
 	public static void setDefaultNodes() {
 		n = 5;
-		f = 3;
+		f = 1;
 
-		V = new Node[15];
+		V = new Node[13];
 		// The start node.
 		V[0] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
 
 		// The pick up nodes.
-		V[1] = new Node(1, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		V[1] = new Node(1, 1, 0, 100, new int[] { 1, 0, 0, 0 }, 30);
 		V[2] = new Node(1, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 		V[3] = new Node(4, 3, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
-		V[4] = new Node(2, 2, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
-		V[5] = new Node(2, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		V[4] = new Node(2, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		V[5] = new Node(2, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 
 		// The drop down nodes.
-		V[6] = new Node(4, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		V[6] = new Node(4, 1, 320, 2000, new int[] { -1, 0, 0, 0 }, 30);
 		V[7] = new Node(4, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
 		V[8] = new Node(1, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
 		V[9] = new Node(3, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
@@ -633,11 +636,11 @@ public class model {
 
 		// AFS
 		V[11] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-		V[12] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-		V[13] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		V[12] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		V[13] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
 		
 		// The end depot.
-		V[14] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
+		V[12] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
 	}
 
 	private static void solveModel() {
@@ -664,7 +667,7 @@ public class model {
 						for (int j = 0; j < V.length; j++) {
 							if (i != j) {
 								// Möglicherweise müssen Werte gerundet werden.
-								if (cplex.getValue(x[i][j][k]) == 0) {
+								if (Math.round(cplex.getValue(x[i][j][k])) == 0) {
 									System.out.print("-\t");
 								} else {
 									System.out.print(Math.round(cplex.getValue(x[i][j][k])) + "\t");
@@ -677,38 +680,55 @@ public class model {
 					}
 					System.out.println();
 
-					int node = getNextNode(0, k);
-					double distance = c[0][node];
-//					int tempNode = 0;
-					System.out.print("Route: 0 -> ");
-					while (node != 0) {						
+					System.out.print("Route Truck " + k + ": ");
+					int node = 0;
+					int tempNode = 0;
+					double distance = 0;
+					do {
 						if (node != 2 * n + f + 1) {
 							System.out.print(node + " -> ");
 						} else {
 							System.out.print(node);
 						}
-//						tempNode = node;
+						tempNode = node;
 						node = getNextNode(node, k);
-//						distance += c[tempNode][node];
-					}
+						if (tempNode != 2 * n + f + 1) {
+							distance += c[tempNode][node];
+						}
+					} while (node != 0);
+
+
+
+//					System.out.print("Route Truck " + k + ": 0 -> ");
+//					while (node != 0) {						
+//						if (node != 2 * n + f + 1) {
+//							System.out.print(node + " -> ");
+//						} else {
+//							System.out.print(node);
+//						}
+//						tempNode = node;
+//						node = getNextNode(node, k);
+//						if (tempNode != 2 * n + f + 1) {
+//							distance += c[tempNode][node];
+//						}
+//					}
 					
 					System.out.println();
 					
 					System.out.println("Route duration for Truck " + k + ": "
-							+ Math.round(cplex.getValue(B[2 * n + f + 1][k])) + " minutes.");
+							+ Math.round(cplex.getValue(B[2 * n + f + 1][k]) - cplex.getValue(B[0][k])) + " minutes.");
 
 					System.out.println("Route distance for Truck " + k + ": " + distance + ".");
-					
 					System.out.println();
 					
-					node = getNextNode(0, k);
-					System.out.println("Knoten\txPosition\tyPosition");
-					System.out.println("0\t" + V[0].getxPosition() + "\t" + V[0].getyPosition());
-					while (node != 0) {
-						System.out.println(
-								node + "\t" + V[node].getxPosition() + "\t" + V[node].getyPosition());
+					
+					System.out.println("Knoten\tx-Pos\ty-Pos\tTime");
+					node = 0;
+					do {
+						System.out.print(node + "\t" + V[node].getxPosition() + "\t" + V[node].getyPosition() + "\t");
+						System.out.println(Math.round(cplex.getValue(B[node][k])) + "\t");
 						node = getNextNode(node, k);
-					}
+					} while (node != 0);
 					System.out.println();
 				}
 			} else {
