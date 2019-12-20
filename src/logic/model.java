@@ -15,6 +15,10 @@ public class model {
 	 * Number of AFSs
 	 */
 	private static int f;
+	/**
+	 * Number of dummy AFSs
+	 */
+	private static int fStrich;
 	private static IloCplex cplex;
 	private static IloNumVar[][][] x;
 	private static Node[] V;
@@ -39,11 +43,12 @@ public class model {
 //		}
 
 		// Alle Trucks müssen die selben Container transportieren können.
-		K = new Truck[4];
+		K = new Truck[5];
 		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 600, 5);
-		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 2000, 8);
-		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000, 5); 
-		K[3] = new Truck(new int[] { 1, 0, 0, 0 }, 300, 5); 
+		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 700, 5);
+		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000, 8); 
+		K[3] = new Truck(new int[] { 1, 0, 0, 0 }, 300, 7); 
+		K[4] = new Truck(new int[] { 2, 0, 0, 0 }, 640, 5); 
 		// Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
 															// infeasibility column 'Q(i1;k2)'.
 
@@ -91,6 +96,8 @@ public class model {
 					if (i != j) {
 						for (int k = 0; k < K.length; k++) {
 							obj.addTerm(c[i][j], x[i][j][k]);
+							// This avoids unnecessary visits to AFSs or dummy AFSs on the route.
+							obj.addTerm(V[j].getServiceDuration(), x[i][j][k]);
 						}
 					}
 				}
@@ -538,6 +545,7 @@ public class model {
 			for (int k = 0; k < K.length; k++) {
 				// Hier müsste meiner Meinung nach j = 0 bis j < V.length hin, da es für 
 				// alle Knoten und nicht nur für die Kunden gelten soll.
+				// Das funktioniert aber nicht, warum auch immer.
 				for (int j = 1; j <= 2*n; j++) {
 					for (int i = 0; i < V.length; i++) {
 						if (i != j) {
@@ -553,18 +561,30 @@ public class model {
 			}
 			
 			// Constraint 11 Erdogan: Set fuel level on max. fuel level when visiting an AFS.
-			for (int j = 2*n+1; j <= 2*n+f; j++) {
-				for (int k = 0; k < K.length; k++) {
-					cplex.addEq(z[j][k], K[k].getFuelCapacity(),"Constraint11Erdogan");
+			for (int j = 2*n+1; j <= 2*n+f+fStrich+1; j++) {
+				// Um alle AFSs, auch die dummy AFSs, muss j von 2*n+1 bis 2*n+f+fStrich+1 gehen
+				// und das Zieldepot 2*n+f+1 muss ausgenommen sein.
+				if (j != 2*n+f+1) {
+					for (int k = 0; k < K.length; k++) {
+						cplex.addEq(z[j][k], K[k].getFuelCapacity(),"Constraint11Erdogan");
+					}
 				}
 			}
 			
-			// Constraint 12 Erdogan: Remaining fuel must be sufficient to reach destination depot or AFS
+			// Constraint 12 Erdogan: Remaining fuel must be sufficient to reach AFS
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 0; i < V.length; i++) {
-					for (int j = 2*n+1; j <= 2*n+f; j++) {
-						if (i != j) {
-							cplex.addGe(z[i][k], Math.min(c[i][j], c[i][2*n+f+1]), "Constraint12Erdogan");
+					for (int j = 2*n+1; j <= 2*n+f+fStrich+1; j++) {
+						if (j != 2*n+f+1) {
+							if (i != j) {
+								// Fuel must be sufficient to reach destination depot or next AFS. 
+								// Doesn't work right in some cases.
+//								cplex.addGe(z[i][k], Math.min(c[i][j], c[i][2*n+f+1]), "Constraint12Erdogan");
+								
+								// A dummy AFS is behind the destination and origin depot.
+								// I check only if fuel is enough to reach the next AFSs. This is thus the depot.
+								cplex.addGe(z[i][k], c[i][j], "Constraint12Erdogan");
+							}
 						}
 					}
 				}
@@ -614,9 +634,10 @@ public class model {
 	 */
 	public static void setDefaultNodes() {
 		n = 5;
-		f = 1;
+		f = 3;
+		fStrich = 5;
 
-		V = new Node[13];
+		V = new Node[20];
 		// The start node.
 		V[0] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
 
@@ -634,13 +655,20 @@ public class model {
 		V[9] = new Node(3, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
 		V[10] = new Node(3, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
 
-		// AFS
+		// AFSs
 		V[11] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-//		V[12] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-//		V[13] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[12] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[13] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
 		
 		// The end depot.
-		V[12] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
+		V[14] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
+		
+		// dummy AFSs
+		V[15] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[16] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[17] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[18] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[19] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
 	}
 
 	private static void solveModel() {
@@ -696,37 +724,21 @@ public class model {
 							distance += c[tempNode][node];
 						}
 					} while (node != 0);
-
-
-
-//					System.out.print("Route Truck " + k + ": 0 -> ");
-//					while (node != 0) {						
-//						if (node != 2 * n + f + 1) {
-//							System.out.print(node + " -> ");
-//						} else {
-//							System.out.print(node);
-//						}
-//						tempNode = node;
-//						node = getNextNode(node, k);
-//						if (tempNode != 2 * n + f + 1) {
-//							distance += c[tempNode][node];
-//						}
-//					}
-					
 					System.out.println();
+					
 					
 					System.out.println("Route duration for Truck " + k + ": "
 							+ Math.round(cplex.getValue(B[2 * n + f + 1][k]) - cplex.getValue(B[0][k])) + " minutes.");
-
 					System.out.println("Route distance for Truck " + k + ": " + distance + ".");
 					System.out.println();
 					
 					
-					System.out.println("Knoten\tx-Pos\ty-Pos\tTime");
+					System.out.println("Knoten\tx-Pos\ty-Pos\tTime\tFuel");
 					node = 0;
 					do {
 						System.out.print(node + "\t" + V[node].getxPosition() + "\t" + V[node].getyPosition() + "\t");
-						System.out.println(Math.round(cplex.getValue(B[node][k])) + "\t");
+						System.out.print(Math.round(cplex.getValue(B[node][k])) + "\t");
+						System.out.println(cplex.getValue(z[node][k]));
 						node = getNextNode(node, k);
 					} while (node != 0);
 					System.out.println();
@@ -738,5 +750,6 @@ public class model {
 			e.printStackTrace();
 		}
 	}
-
 }
+
+
