@@ -43,12 +43,14 @@ public class model {
 //		}
 
 		// Alle Trucks müssen die selben Container transportieren können.
-		K = new Truck[5];
-		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 600, 5);
-		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 700, 5);
-		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 1000, 8); 
-		K[3] = new Truck(new int[] { 1, 0, 0, 0 }, 300, 7); 
-		K[4] = new Truck(new int[] { 2, 0, 0, 0 }, 640, 5); 
+		K = new Truck[4];
+		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 5);
+		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 5);
+		K[2] = new Truck(new int[] { 2, 0, 0, 0 }, 460, 7); 
+		K[3] = new Truck(new int[] { 2, 0, 0, 0 }, 460, 7); 
+//		K[4] = new Truck(new int[] { 2, 0, 0, 0 }, 460, 5); 
+//		K[5] = new Truck(new int[] { 2, 0, 0, 0 }, 460, 5); 
+//		K[6] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 5); 
 		// Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
 															// infeasibility column 'Q(i1;k2)'.
 
@@ -68,7 +70,7 @@ public class model {
 					c[i][j] = Math.sqrt(xDistance + yDistance);
 
 					// Die Fahrzeit zwischen i und j ist die Entfernung zwischen den Knoten * 60.
-					t[i][j] = c[i][j] * 60;
+					t[i][j] = c[i][j] * 15;
 				}
 			}
 		}
@@ -642,14 +644,14 @@ public class model {
 		V[0] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
 
 		// The pick up nodes.
-		V[1] = new Node(1, 1, 0, 100, new int[] { 1, 0, 0, 0 }, 30);
+		V[1] = new Node(1, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 		V[2] = new Node(1, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 		V[3] = new Node(4, 3, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 		V[4] = new Node(2, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 		V[5] = new Node(2, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 
 		// The drop down nodes.
-		V[6] = new Node(4, 1, 320, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		V[6] = new Node(4, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
 		V[7] = new Node(4, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
 		V[8] = new Node(1, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
 		V[9] = new Node(3, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
