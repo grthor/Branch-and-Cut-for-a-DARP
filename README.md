@@ -5,7 +5,7 @@ This is the implementation of the paper "A Branch-and-Cut Algorithm for the Dial
 
 The main part of the implementation is in located in model.java. This file contains all the constraints. The classes [Truck.java](https://github.com/grthor/Branch-and-Cut-for-a-DARP/blob/master/src/logic/Truck.java) contains the code for a vehicle and [Node.java](https://github.com/grthor/Branch-and-Cut-for-a-DARP/blob/master/src/logic/Node.java) contains the code for a node in the graph.
 
-The code is fully commented and works.
+**The code is fully commented and works.**
 
 ## How to use
 
