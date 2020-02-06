@@ -43,11 +43,11 @@ public class model {
 //		}
 
 		// Alle Trucks müssen die selben Container transportieren können.
-		K = new Truck[4];
-		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 5);
-		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 5);
-		K[2] = new Truck(new int[] { 2, 0, 0, 0 }, 460, 7); 
-		K[3] = new Truck(new int[] { 2, 0, 0, 0 }, 460, 7); 
+		K = new Truck[3];
+		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 7);
+		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 7);
+		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 7); 
+//		K[3] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 7); 
 //		K[4] = new Truck(new int[] { 2, 0, 0, 0 }, 460, 5); 
 //		K[5] = new Truck(new int[] { 2, 0, 0, 0 }, 460, 5); 
 //		K[6] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 5); 
@@ -112,9 +112,9 @@ public class model {
 			// once)
 			// Funktioniert!
 			// Cordeau geht von 1..n, Pesch von 1..2n
-			// Von 1..n ist schneller aus von 1..2n.
+			// Von 1..2n ist schneller als 1..n
 			// Beides funktioniert.
-			for (int i = 1; i <= n; i++) {
+			for (int i = 1; i <= 2*n; i++) {
 				IloLinearNumExpr expr = cplex.linearNumExpr();
 				for (int k = 0; k < K.length; k++) {
 					for (int j = 0; j < V.length; j++) {
@@ -158,9 +158,9 @@ public class model {
 				}
 			}
 
-			// Constraint 5 Pesch: Flow constraint: Every Node from P union D (1..2*n)
+			// Constraint 5 Pesch: Flow constraint: Every Node from V'
 			// must have the same amount of edges going and edges going out.
-			// The Nodes 0 and 2n+1 (7) are not covered by this constraint, because
+			// The Nodes 0 and 2*n+f+1 are not covered by this constraint, because
 			// the route should start/end there.
 			// Constraint 5 Cordeau
 			for (int k = 0; k < K.length; k++) {
@@ -245,8 +245,8 @@ public class model {
 //				}
 //			}
 
-			// Version von Pesch: Ist langsamer als die Version von Cordeau.
-			// Liefert das selbe Ergebnis wie Pesch.
+			// Pesch
+			// Ist schneller als Cordeau
 			for (int k = 0; k < K.length; k++) {
 			//Modell geändert: Im Original wird anstatt N=PuD N=PuDu{0, 2n+1} genommen.
 			//Start und Zieldepot sind in dieser Variante inbegriffen.
@@ -274,20 +274,21 @@ public class model {
 			}
 			
 			// Constraint 11 Pesch: impose capacity constraint
-			// Constraint 12 Cordeau
+			// Constraint 13 Cordeau
 			// Cordeau
-//			for (int i = 0; i < N.length; i++) {
+//			for (int i = 0; i < V.length; i++) {
 //				for (int k = 0; k < K.length; k++) {
 //					for (int r = 0; r <= 3; r++) {
-//						cplex.addLe(Math.max(0, N[i].getLoad()[r]), Q[i][r][k], "Constraint13_1Cordeau");
+//						cplex.addLe(Math.max(0, V[i].getLoad()[r]), Q[i][r][k], "Constraint13_1Cordeau");
 //						cplex.addLe(Q[i][r][k],
-//								Math.min(K[k].getCapacity()[r], K[k].getCapacity()[r] + N[i].getLoad()[r]),
+//								Math.min(K[k].getCapacity()[r], K[k].getCapacity()[r] + V[i].getLoad()[r]),
 //								"Constraint13_2Cordeau");
 //					}
 //				}
 //			}
 
 			// Pesch
+			// Ist schneller als Cordeau
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 0; i < V.length; i++) {
 					for (int r = 0; r <= 3; r++) {
@@ -478,7 +479,7 @@ public class model {
 //			// FIXME: Funktioniert nicht. Im ersten Versuch wurde der Spritverbrauch nicht reduziert.
 //			for (int k = 0; k < K.length; k++) {
 //				for (int i = 0; i < V.length; i++) {
-//					for (int j = 0; j < V.length; j++) {
+//					for (int j = 1; j <= 2*n; j++) {
 //						if (i != j) {
 //							IloLinearNumExpr expr = cplex.linearNumExpr();
 //							expr.setConstant(K[k].getFuelCapacity());
@@ -497,15 +498,17 @@ public class model {
 //			//Constraint 23 Pesch: Guarantee that remaining fuel is enough to reach an AFS.
 //			for (int k = 0; k < K.length; k++) {
 //				for (int i = 0; i <= 2*n; i++) {
-//					for (int j = 2*n+1; j < 2*n+f; j++) {
-//						if (i != j) {
-//							IloLinearNumExpr expr = cplex.linearNumExpr();
-//							expr.setConstant(K[k].getFuelCapacity());
-//							expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
-//							expr.addTerm(1.0, z[i][k]);
-//							expr.addTerm(-1.0, z[j][k]);
-//							expr.addTerm(-c[i][j], x[i][j][k]);
-//							cplex.addGe(expr, 0.0, "Constraint23Pesch");
+//					for (int j = 2*n+1; j < 2*n+f+fStrich+1; j++) {
+//						if (j != 2*n+f+1) {
+//							if (i != j) {
+//								IloLinearNumExpr expr = cplex.linearNumExpr();
+//								expr.setConstant(K[k].getFuelCapacity());
+//								expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
+//								expr.addTerm(1.0, z[i][k]);
+//								expr.addTerm(-1.0, z[j][k]);
+//								expr.addTerm(-c[i][j], x[i][j][k]);
+//								cplex.addGe(expr, 0.0, "Constraint23Pesch");
+//							}
 //						}
 //					}
 //				}
@@ -514,31 +517,35 @@ public class model {
 //			// Constraint 24 Pesch: Set z to fuelCapacity of the vehicle.
 //			// Eigene Linearisierung
 //			for (int i = 0; i < V.length; i++) {
-//				for (int j = 2*n+1; j <= 2*n+f; j++) {
-//					if (i != j) {
-//						for (int k = 0; k < K.length; k++) {
-//							IloLinearNumExpr expr = cplex.linearNumExpr();
-//							expr.addTerm(1.0, z[j][k]);
-//							expr.setConstant(-K[k].getFuelCapacity());
-//							expr.addTerm(K[k].getFuelCapacity(), x[i][j][k]);
-//							cplex.addLe(expr, 15.0, "Constraint24Pesch");
+//				for (int j = 2*n+1; j <= 2*n+f+fStrich+1; j++) {
+//					if (j <= 2+n+f+1) {
+//						if (i != j) {
+//							for (int k = 0; k < K.length; k++) {
+//								IloLinearNumExpr expr = cplex.linearNumExpr();
+//								expr.addTerm(1.0, z[j][k]);
+//								expr.setConstant(-K[k].getFuelCapacity());
+//								expr.addTerm(K[k].getFuelCapacity(), x[i][j][k]);
+//								cplex.addLe(expr, 15.0, "Constraint24Pesch");
+//							}
 //						}
 //					}
 //				}
 //			}
 //			
-//			// Constraint 25 Pesch: Set Fuel level on start depot to fuelCapacity.
-//			// Geht das überhaupt oder muss dort x = 1 => Constraint, wie bei Constraint 24.
-//			// Das ist eine sinnlose Angelegenheit, da eine Route maximal einmal (nämlich beim Start)
-//			// beim Startdepot vorbeikommt. Tanken am Startdepot ist also nicht.
-//			for (int k = 0; k < K.length; k++) {
-//				cplex.addEq(z[0][k], K[k].getFuelCapacity(), "Constraint25Pesch");
-//			}
-//			
+			// Constraint 25 Pesch: Set Fuel level on start depot to fuelCapacity.
+			// Geht das überhaupt oder muss dort x = 1 => Constraint, wie bei Constraint 24.
+			// Das ist eine sinnlose Angelegenheit, da eine Route maximal einmal (nämlich beim Start)
+			// beim Startdepot vorbeikommt. Tanken am Startdepot ist also nicht.
+			// Macht das Modell minimal schneller, da kein "optimaler" Starttankinhalt berechnet wird.
+			for (int k = 0; k < K.length; k++) {
+				cplex.addEq(z[0][k], K[k].getFuelCapacity(), "Constraint25Pesch");
+			}
+			
 //			// Constraint 26 Groos: Set Fuel level on destination depot to fuelCapacity.
 //			// Geht das überhaupt oder muss dort x = 1 => Constraint, wie bei Constraint 24.
 //			// Genauso wie Constraint 25 ist dieser hier sinnlose, da eine Route genau einmal
 //			// beim Zieldepot vorbeikommt. Tanken am Zieldepot ist also ausgeschlossen.
+			// Macht das Modell nicht schneller!
 //			for (int k = 0; k < K.length; k++) {
 //				cplex.addEq(z[2*n+f+1][k], K[k].getFuelCapacity(), "Constraint26Groos");
 //			}
@@ -635,42 +642,52 @@ public class model {
 	 * be created.
 	 */
 	public static void setDefaultNodes() {
-		n = 5;
+		n = 6;
 		f = 3;
-		fStrich = 5;
+		fStrich = 2;
 
-		V = new Node[20];
+		V = new Node[19];
 		// The start node.
-		V[0] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
+		V[0] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
 
 		// The pick up nodes.
 		V[1] = new Node(1, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 		V[2] = new Node(1, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 		V[3] = new Node(4, 3, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 		V[4] = new Node(2, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
-		V[5] = new Node(2, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		V[5] = new Node(2, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);		
+		V[6] = new Node(5, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+//		V[7] = new Node(5, 2, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+//		V[8] = new Node(2, 5, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 
 		// The drop down nodes.
-		V[6] = new Node(4, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
-		V[7] = new Node(4, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
-		V[8] = new Node(1, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
-		V[9] = new Node(3, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
-		V[10] = new Node(3, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		V[7] = new Node(4, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		V[8] = new Node(4, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		V[9] = new Node(1, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		V[10] = new Node(3, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		V[11] = new Node(3, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);		
+		V[12] = new Node(3, 5, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+//		V[14] = new Node(2, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+//		V[16] = new Node(5, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
 
 		// AFSs
-		V[11] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-		V[12] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-		V[13] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[13] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[14] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[15] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);		
+//		V[14] = new Node(4, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		V[15] = new Node(1, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
 		
 		// The end depot.
-		V[14] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
+		V[16] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
 		
 		// dummy AFSs
-		V[15] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-		V[16] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-		V[17] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-		V[18] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-		V[19] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[17] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		V[18] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);	
+//		V[17] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		V[18] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		V[27] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		V[28] = new Node(4, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		V[29] = new Node(1, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
 	}
 
 	private static void solveModel() {
