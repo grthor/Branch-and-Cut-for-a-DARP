@@ -22,7 +22,7 @@ public class model {
 	 */
 	private static IloNumVar[][][] x;
 	/**
-	 * Number of users (numbers of pick-up locations)
+	 * Number of users (number of pick-up locations)
 	 */
 	private static int n;
 	/**
