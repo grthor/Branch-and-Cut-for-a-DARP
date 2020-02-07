@@ -9,7 +9,7 @@ The main part of the implementation is in located in [model.java](https://github
 
 ## How to use
 
-1. Download the src/log foldere.
-2. Open Eclipse and opoen the project via 'File' -> 'Open Projects From File System' and select the download folder.
+1. Download the src/logic folder.
+2. Open Eclipse IDE and then open the project via 'File' -> 'Open Projects From File System' and select the downloaded folder.
 3. Add the cplex.jar to the referenced libraries. You need Cplex being installed on your PC. How you add cplex.jar to the project you can read in the [official documentation of IBM on how to add cplex.jar to Eclipse IDE](https://www.ibm.com/support/pages/configuring-eclipse-java-ide-use-cplex-libraries).
 4. Simply run [model.java](https://github.com/grthor/Branch-and-Cut-for-a-DARP/blob/master/src/logic/model.java) via 'right click on the file' and 'Run As' -> '1 Java Application'. The model can be solved with the default settings.
