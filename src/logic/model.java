@@ -4,10 +4,21 @@ import ilog.cplex.*;
 import ilog.cplex.IloCplex.UnknownObjectException;
 import ilog.concert.*;
 
+/**
+ * 
+ * @author Thorben Groos (thorben.groos@student.uni-siegen.de)
+ *
+ */
 public class model {
+	
 
 	/**
-	 * Number of Pick up nodes
+	 * The Cplex model.
+	 */
+	private static IloCplex cplex;
+	
+	/**
+	 * Number of users (number of pick-up locations)
 	 */
 	private static int n;
 	
@@ -15,61 +26,125 @@ public class model {
 	 * Number of AFSs
 	 */
 	private static int f;
+	
 	/**
 	 * Number of dummy AFSs
 	 */
 	private static int fStrich;
-	private static IloCplex cplex;
-	private static IloNumVar[][][] x;
-	private static Node[] V;
+	
+	/**
+	 * Array containing all nodes.
+	 */
+	private static Node[] VStrich;
+	
+	/**
+	 * Array containing all vehicles.
+	 */
 	private static Truck[] K;
-	private static double[][] c;
-
+	
+	/**
+	 * Maximum duration of a route.
+	 */
+	private static double Tmax = 480;
+	
+	/**
+	 * Maximum transportation time of a container.
+	 */
+	private static double Lmax = 240;
+	
+	/**
+	 * The decision variable x.
+	 */
+	private static IloNumVar[][][] x;
+	
+	/**
+	 * Load of resource r on vehicle k after visiting node i.
+	 */
+	private static IloNumVar[][][] Q;
+	
+	/**
+	 * Time which vehicle k starts its service at node i.
+	 */
 	private static IloNumVar[][] B;
+	
+	/**
+	 * Time variable specifying the arrival time of vehicle k at node i
+	 */
+	private static IloNumVar[][] A;
+	
+	/**
+	 * Transportation time of a loaded container from node i on vehicle k.
+	 */
+	private static IloNumVar[][] l;
+	
+	/**
+	 * Fuel level on vehicle k after departure to node i.
+	 */
 	private static IloNumVar[][] z;
+	
+	/**
+	 * Distance between node i and node j.</br>
+	 * Simple euclidean distance.
+	 */
+	private static double[][] c;
+	
+	/**
+	 * The travel time in minutes between node i and node j.</br>
+	 * Is calculated as distance * 15
+	 */
+	private static double[][] t;
+
+
 
 	public static void main(String[] args) {
 
-		// Uncomment if you want to automatically create Nodes
-//		autoGenerateNodes(5);
-
-		// Generate a predefined set of nodes.
+		// Use a predefined set of nodes (definitely solvable)
 		setDefaultNodes();
+		// Or generate a random set of nodes (maybe not solvable)
+		// If you use a large number of nodes you have to raise
+		// the number of vehicles to get a solution
+//		autoGenerateNodes(5, 3);
+		// This would generate a set of 12 nodes (5 Pick up, 5 drop down, origin depot,
+		// destination depot)
 
-		// Print Node Positions for Excel.
-//		System.out.println("Knoten\txPosition\tyPosition");
+		// Print node positions in the console for e.g. a visualization in excel.
+//		System.out.println("Node\tx-Pos.\ty-pos");
 //		for (int i = 0; i <= 2*n+1; i++) {
 //			System.out.println(i + "\t" + N[i].getxPosition() + "\t" + N[i].getyPosition());
 //		}
 
 		// Alle Trucks müssen die selben Container transportieren können.
 		K = new Truck[3];
-		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 7);
-		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 7);
-		K[2] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 7); 
-//		K[3] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 7); 
-//		K[4] = new Truck(new int[] { 2, 0, 0, 0 }, 460, 5); 
-//		K[5] = new Truck(new int[] { 2, 0, 0, 0 }, 460, 5); 
-//		K[6] = new Truck(new int[] { 1, 0, 0, 0 }, 460, 5); 
+		// This truck can carry one full 20" container, is allowed to drive 460 minutes maximum 
+		// and has a tank capacity of 7.
+		K[0] = new Truck(new int[] { 1, 0, 0, 0 }, 7);
+		K[1] = new Truck(new int[] { 1, 0, 0, 0 }, 7);
+		K[2] = new Truck(new int[] { 2, 0, 0, 0 }, 7); 
+//		K[3] = new Truck(new int[] { 1, 0, 0, 0 }, 7); 
+//		K[4] = new Truck(new int[] { 2, 0, 0, 0 }, 5); 
+//		K[5] = new Truck(new int[] { 2, 0, 0, 0 }, 5); 
+//		K[6] = new Truck(new int[] { 1, 0, 0, 0 }, 5); 
 		// Mit einem Truck ohne Kapazität (capacity = 0) gibt es Bound
 															// infeasibility column 'Q(i1;k2)'.
 
 		// c enthält die Distanz zwischen allen Knoten
-		c = new double[V.length][V.length];
+		c = new double[VStrich.length][VStrich.length];
 		// t enthält die Fahrzeit zwischen allen Knoten.
-		double[][] t = new double[V.length][V.length];
+		t = new double[VStrich.length][VStrich.length];
 
 		double xDistance;
 		double yDistance;
 
-		for (int i = 0; i < V.length; i++) {
-			for (int j = 0; j < V.length; j++) {
+		for (int i = 0; i < VStrich.length; i++) {
+			for (int j = 0; j < VStrich.length; j++) {
 				if (i != j) {
-					xDistance = Math.pow(V[i].getxPosition() - V[j].getxPosition(), 2);
-					yDistance = Math.pow(V[i].getyPosition() - V[j].getyPosition(), 2);
+					// Calculate the euclidean distance between all nodes.
+					xDistance = Math.pow(VStrich[i].getxPosition() - VStrich[j].getxPosition(), 2);
+					yDistance = Math.pow(VStrich[i].getyPosition() - VStrich[j].getyPosition(), 2);
 					c[i][j] = Math.sqrt(xDistance + yDistance);
 
-					// Die Fahrzeit zwischen i und j ist die Entfernung zwischen den Knoten * 60.
+					// The travel time (in minutes) between a node i and a node j is the distance *
+					// 15.
 					t[i][j] = c[i][j] * 15;
 				}
 			}
@@ -78,11 +153,10 @@ public class model {
 		try {
 			cplex = new IloCplex();
 
-			// Constraint 26 Pesch:Binary decision variable.
-			// Constraint 14 Cordeau
-			x = new IloNumVar[V.length][V.length][K.length];
-			for (int i = 0; i < V.length; i++) {
-				for (int j = 0; j < V.length; j++) {
+			// Constraint 26: Decision variable x has to be binary.
+			x = new IloNumVar[VStrich.length][VStrich.length][K.length];
+			for (int i = 0; i < VStrich.length; i++) {
+				for (int j = 0; j < VStrich.length; j++) {
 					if (i != j) {
 						for (int k = 0; k < K.length; k++) {
 							x[i][j][k] = cplex.boolVar("x(" + "i" + i + ";j" + j + ";k" + k + ")");
@@ -91,15 +165,17 @@ public class model {
 				}
 			}
 
-			// Zielfunktion
+			// objective function
 			IloLinearNumExpr obj = cplex.linearNumExpr();
-			for (int i = 0; i < V.length; i++) {
-				for (int j = 0; j < V.length; j++) {
+			for (int i = 0; i < VStrich.length; i++) {
+				for (int j = 0; j < VStrich.length; j++) {
 					if (i != j) {
 						for (int k = 0; k < K.length; k++) {
-							obj.addTerm(c[i][j], x[i][j][k]);
-							// This avoids unnecessary visits to AFSs or dummy AFSs on the route.
-							obj.addTerm(V[j].getServiceDuration(), x[i][j][k]);
+							// Diese Zielfunktion ermöglicht unnötige Stopps am Start- und Zieldepot.
+//							obj.addTerm(c[i][j], x[i][j][k]);
+							
+							// Durch einbeziehen der Zeit werden diese sinnlosen Stopps nicht mehr gemacht.
+							obj.addTerm(VStrich[j].getServiceDuration(), x[i][j][k]);
 						}
 					}
 				}
@@ -108,192 +184,159 @@ public class model {
 			// Minimize the objective.
 			cplex.addMinimize(obj);
 
-			// Constraint 2: Visit every Pick up Location. (Serve every request exactly
-			// once)
-			// Funktioniert!
-			// Cordeau geht von 1..n, Pesch von 1..2n
-			// Von 1..2n ist schneller als 1..n
-			// Beides funktioniert.
+			// Constraint 2: Visit every Pick up Location. (Serve every request exactly once)
 			for (int i = 1; i <= 2*n; i++) {
 				IloLinearNumExpr expr = cplex.linearNumExpr();
 				for (int k = 0; k < K.length; k++) {
-					for (int j = 0; j < V.length; j++) {
+					for (int j = 0; j < VStrich.length; j++) {
 						if (i != j) {
 							expr.addTerm(1.0, x[i][j][k]);
 						}
 					}
 				}
-				cplex.addEq(expr, 1.0, "Constraint2Pesch");
+				cplex.addEq(expr, 1.0, "Constraint2");
 			}
 			
-			// Constraint 3 Pesch: Es darf nur eine Kante in einen pick up oder dropdown Node führen.
+			// Constraint 3. Visit every Dropdown location once. (Serve every request exactly once)
 			for (int j = 1; j <= 2*n; j++) {
 				IloLinearNumExpr expr = cplex.linearNumExpr();
 				for (int k = 0; k < K.length; k++) {
-					for (int i = 0; i < V.length; i++) {
+					for (int i = 0; i < VStrich.length; i++) {
 						if (i != j) {
 							expr.addTerm(1.0, x[i][j][k]);
 						}
 					}
 				}
-				cplex.addEq(1.0, expr, "Constraint3Pesch");
+				cplex.addEq(1.0, expr, "Constraint3");
 			}
 
-			// Constraint 4 Pesch: visit pickup and dropdown depot by the same vehicle.
-			// Constraint 3 Cordeau
+			// Constraint 4: visit pickup and dropdown node by the same vehicle.
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 1; i <= n; i++) {
 					IloLinearNumExpr expr = cplex.linearNumExpr();
-					for (int j = 0; j < V.length; j++) {
+					for (int j = 0; j < VStrich.length; j++) {
 						if (i != j) {
 							expr.addTerm(1.0, x[i][j][k]);
 						}
 					}
 					
-					for (int j = 0; j < V.length; j++) {
-						if (n+i != j)
+					for (int j = 0; j < VStrich.length; j++) {
+						if (n + i != j)
 							expr.addTerm(-1.0, x[n + i][j][k]);
 					}
-					cplex.addEq(expr, 0.0, "Constraint4Pesch");
+					cplex.addEq(expr, 0.0, "Constraint4");
 				}
 			}
 
-			// Constraint 5 Pesch: Flow constraint: Every Node from V'
-			// must have the same amount of edges going and edges going out.
+			// Constraint 5: Flow constraint: Every Node from V'
+			// must have the same amount of edges going in and edges going out.
 			// The Nodes 0 and 2*n+f+1 are not covered by this constraint, because
 			// the route should start/end there.
-			// Constraint 5 Cordeau
 			for (int k = 0; k < K.length; k++) {
-				for (int i = 0; i < V.length; i++) {
-					// Start und Zieldepot sind vom Flow Constraint ausgenommen.
-					if (i != 0) {
-						// Start und Zieldepot sind vom Flow Constraint ausgenommen.
-						if (i != 2*n+f+1) {
+				for (int j = 0; j < VStrich.length; j++) {
+					// Start- und Zieldepot sind vom Flow Constraint ausgenommen.
+					if (j != 0) {
+						// Start- und Zieldepot sind vom Flow Constraint ausgenommen.
+						if (j != 2*n+f+1) {
 							IloLinearNumExpr expr = cplex.linearNumExpr();
-							for (int j = 0; j < V.length; j++) {
-								if (i != j) {
-									expr.addTerm(1.0, x[j][i][k]);
+							for (int i = 0; i < VStrich.length; i++) {
+								if (j != i) {
+									expr.addTerm(1.0, x[i][j][k]);
 								}
 							}
-							for (int j = 0; j < V.length; j++) {
-								if (i != j) {
-									expr.addTerm(-1.0, x[i][j][k]);
+							for (int i = 0; i < VStrich.length; i++) {
+								if (j != i) {
+									expr.addTerm(-1.0, x[j][i][k]);
 								}
 							}
-							cplex.addEq(expr, 0.0, "Constraint5Pesch");
+							cplex.addEq(expr, 0.0, "Constraint5");
 						}
 					}
 				}
 			}
 			
-			// Constraint 7 Pesch: Start route at the origin depot.
-			// Constraint 4 Cordeau
+			//Constraint 6: If a dummy AFS is visited on a route, it has
+			// at least one successor node (client, AFS, depot).
+			for (int i = 1; i <= fStrich; i++) {
+				IloLinearNumExpr expr = cplex.linearNumExpr();
+				for (int k = 0; k < K.length; k++) {
+					for (int j = 0; j < VStrich.length; j++) {
+						if (j != 2*n+f+1+i) {
+							expr.addTerm(1.0, x[2*n+f+1+i][j][k]);	
+						}
+					}
+				}
+				cplex.addLe(expr, 1.0, "Constraint6");
+			}
+			
+			
+			// Constraint 7: Start route at the origin depot.
 			for (int k = 0; k < K.length; k++) {
 				IloLinearNumExpr expr = cplex.linearNumExpr();
-				for (int j = 0; j < V.length; j++) {
+				for (int j = 0; j < VStrich.length; j++) {
 					if (j != 0) {
 						expr.addTerm(1.0, x[0][j][k]);
 					}
 				}
-				cplex.addEq(expr, 1.0, "Constraint7Pesch");
+				cplex.addEq(expr, 1.0, "Constraint7");
 			}
 
 			// Constraint 9 Pesch: End Route at destination depot.
-			// Constraint 6 Cordeau
 			for (int k = 0; k < K.length; k++) {
 				IloLinearNumExpr expr = cplex.linearNumExpr();
-				for (int i = 0; i < V.length; i++) {
+				for (int i = 0; i < VStrich.length; i++) {
 					if (i != 2 * n + f + 1) {
 						expr.addTerm(1.0, x[i][2 * n + f + 1][k]);
 					}
 				}
-				cplex.addEq(expr, 1.0, "Constraint9Pesch");
+				cplex.addEq(expr, 1.0, "Constraint9");
 			}
 			
 			// Definition Variable Q_ik: Load of vehicle k after visiting node i.
-			IloNumVar[][][] Q = new IloNumVar[V.length][4][K.length];
-			for (int i = 0; i < V.length; i++) {
+			Q = new IloNumVar[VStrich.length][4][K.length];
+			for (int i = 0; i < VStrich.length; i++) {
 				for (int r = 0; r <= 3; r++) {
 					for (int k = 0; k < K.length; k++) {
-						Q[i][r][k] = cplex.numVar(0, K[k].getCapacity()[r], "Q(i" + i + ";r" + r + ";k" + k + ")");
+						Q[i][r][k] = cplex.numVar(0, K[k].getContainerCapacity()[r], "Q(i" + i + ";r" + r + ";k" + k + ")");
 					}
 				}
 			}
 
-			// Constraint 10 Pesch: Die geladenen Ressourcen auf LKW k müssen bei Knoten i
+			// Constraint 10: Die geladenen Ressourcen auf LKW k müssen bei Knoten i
 			// plus dem Load von Knoten i kleiner/gleich den geladenen Ressourcen
 			// bei Knoten j sein.
-			// Version von Cordeau: Ist schneller als die Version von Pesch.
-			// Liefert das selbe Ergebnis wie Pesch.
-			// Constraint 8 Cordeau
-			//Cordeau
-//			double W;
-//			for (int i = 0; i < V.length; i++) {
-//				for (int j = 0; j < V.length; j++) {
-//					if (i != j) {
-//						for (int k = 0; k < K.length; k++) {
-//							for (int r = 0; r <= 3; r++) {
-//								W = Math.min(K[k].getCapacity()[r], K[k].getCapacity()[r] + V[i].getLoad()[r]);
-//								IloLinearNumExpr expr = cplex.linearNumExpr();
-//								expr.addTerm(1.0, Q[i][r][k]);
-//								expr.setConstant(V[j].getLoad()[r] - W);
-//								expr.addTerm(W, x[i][j][k]);
-//								cplex.addGe(Q[j][r][k], expr, "Constraint8(i" + i + ";j" + j + ";k" + k + ";r" + r + ")Cordeau");
-//							}
-//						}
-//					}
-//				}
-//			}
-
-			// Pesch
-			// Ist schneller als Cordeau
 			for (int k = 0; k < K.length; k++) {
-			//Modell geändert: Im Original wird anstatt N=PuD N=PuDu{0, 2n+1} genommen.
-			//Start und Zieldepot sind in dieser Variante inbegriffen.
-				for (int i = 0; i < V.length; i++) {
+			    // Modell geändert: Es wird anstatt N=PuD V' genommen. Da die Beschränkung für alle 
+				// Knoten gelten soll. 
+ 				for (int i = 0; i < VStrich.length; i++) {
 				// Hier das selbe wie beim vorherigen Kommentar. Für Start- und Zielknoten 
 				// gilt diese Bedingung auch.
-					for (int j = 0; j < V.length; j++) {
+					for (int j = 0; j < VStrich.length; j++) {
 						if (i != j) {
 							for (int r = 0; r <= 3; r++) {
 								IloLinearNumExpr expr1 = cplex.linearNumExpr();
 								expr1.addTerm(1.0, Q[i][r][k]);
-								expr1.setConstant(V[j].getLoad()[r] + K[k].getCapacity()[r]);
-								expr1.addTerm(-K[k].getCapacity()[r], x[i][j][k]);
-								cplex.addLe(Q[j][r][k], expr1, "Contraint10a(k" + k + ";i" + i + ";j" + j + ";r" + r + ")Pesch");
+								expr1.setConstant(VStrich[j].getLoad()[r] + K[k].getContainerCapacity()[r]);
+								expr1.addTerm(-K[k].getContainerCapacity()[r], x[i][j][k]);
+								cplex.addLe(Q[j][r][k], expr1, "Contraint10a");
 								
 								IloLinearNumExpr expr2 = cplex.linearNumExpr();
 								expr2.addTerm(1.0, Q[i][r][k]);
-								expr2.setConstant(V[j].getLoad()[r] - K[k].getCapacity()[r]);
-								expr2.addTerm(K[k].getCapacity()[r], x[i][j][k]);
-								cplex.addGe(Q[j][r][k], expr2, "Constraint10b(k" + k + ";i" + i + ";j" + j + ";r" + r + ")Pesch");
+								expr2.setConstant(VStrich[j].getLoad()[r] - K[k].getContainerCapacity()[r]);
+								expr2.addTerm(K[k].getContainerCapacity()[r], x[i][j][k]);
+								cplex.addGe(Q[j][r][k], expr2, "Constraint10b");
 							}
 						}
 					}
 				}
 			}
 			
-			// Constraint 11 Pesch: impose capacity constraint
-			// Constraint 13 Cordeau
-			// Cordeau
-//			for (int i = 0; i < V.length; i++) {
-//				for (int k = 0; k < K.length; k++) {
-//					for (int r = 0; r <= 3; r++) {
-//						cplex.addLe(Math.max(0, V[i].getLoad()[r]), Q[i][r][k], "Constraint13_1Cordeau");
-//						cplex.addLe(Q[i][r][k],
-//								Math.min(K[k].getCapacity()[r], K[k].getCapacity()[r] + V[i].getLoad()[r]),
-//								"Constraint13_2Cordeau");
-//					}
-//				}
-//			}
-
-			// Pesch
-			// Ist schneller als Cordeau
+			// Constraint 11: impose capacity constraints
 			for (int k = 0; k < K.length; k++) {
-				for (int i = 0; i < V.length; i++) {
+				for (int i = 0; i < VStrich.length; i++) {
 					for (int r = 0; r <= 3; r++) {
-						cplex.addLe(0.0, Q[i][r][k], "Constraint11_1Pesch");
-						cplex.addLe(Q[i][r][k], K[k].getCapacity()[r], "Constraint11_2Pesch");
+						cplex.addLe(0.0, Q[i][r][k], "Constraint11_1");
+						cplex.addLe(Q[i][r][k], K[k].getContainerCapacity()[r], "Constraint11_2");
 					}
 				}
 			}
@@ -302,11 +345,11 @@ public class model {
 			// nicht überschreiten. Bsp. Ein LKW kann nicht 2 volle 30 Fuß Container und 2 
 			// leere 30 Fuß Container laden, da er nur Platz für insgesamt 2 Container hat.
 			for (int k = 0; k < K.length; k++) {
-				for (int i = 0; i < V.length; i++) {
+				for (int i = 0; i < VStrich.length; i++) {
 					IloLinearNumExpr expr = cplex.linearNumExpr();
 					expr.addTerm(1.0, Q[i][0][k]);
 					expr.addTerm(1.0, Q[i][1][k]);
-					cplex.addLe(expr, K[k].getCapacity()[0], "Constraint12Pesch");
+					cplex.addLe(expr, K[k].getContainerCapacity()[0], "Constraint12");
 				}
 			}
 
@@ -314,256 +357,241 @@ public class model {
 			// des LKWs nicht übeschreiten. Bsp.: Es kann nicht ein voller und ein leerer 60"
 			// Container gleichzeitig geladen sein.
 			for (int k = 0; k < K.length; k++) {
-				for (int i = 0; i < V.length; i++) {
+				for (int i = 0; i < VStrich.length; i++) {
 					IloLinearNumExpr expr = cplex.linearNumExpr();
 					expr.addTerm(1.0, Q[i][2][k]);
 					expr.addTerm(1.0, Q[i][3][k]);
-					cplex.addLe(expr, K[k].getCapacity()[2], "Constraint13Pesch");
+					cplex.addLe(expr, K[k].getContainerCapacity()[2], "Constraint13");
 				}
 			}
 			
-			// Constraint 14 Pesch: Start with empty
-			// Constraint 14 und 15 haben den Algorithmus doppelt so schnell gemacht.
-			// Beide Constraints sind aber nicht notwendig.
-			// Pesch
+			// Constraint 14: Start a route without containers
 			for (int k = 0; k < K.length; k++) {
 				for (int r = 0; r <= 3; r++) {
-					cplex.addEq(Q[0][r][k], 0.0, "Constraint14Pesch");
+					cplex.addEq(Q[0][r][k], 0.0, "Constraint14");
 				}
 			}
 
-			// Constraint 15 Pesch: Route beenden ohne container.
-			// Constraint 14 und 15 haben den Algorithmus doppelt so schnell gemacht.
-			// Beide Constraints sind aber nicht notwendig.
-			// Pesch
+			// Constraint 15 Pesch: End routes without containers
 			for (int k = 0; k < K.length; k++) {
 				for (int r = 0; r <= 3; r++) {
-					cplex.addEq(Q[2*n+f+1][r][k], 0.0, "Constraint15Pesch");
+					cplex.addEq(Q[2*n+f+1][r][k], 0.0, "Constraint15");
 				}
 			}
-			
-			
 			
 
 			// Kontinuirliche Variable B_ik für die Zeit, an der Truck seinen
 			// Service an Knoten i beginnt.
-			B = new IloNumVar[V.length][K.length];
-			for (int i = 0; i < V.length; i++) {
+			B = new IloNumVar[VStrich.length][K.length];
+			for (int i = 0; i < VStrich.length; i++) {
 				for (int k = 0; k < K.length; k++) {
-					B[i][k] = cplex.numVar(V[i].getBeginServiceTime(), V[i].getEndServiceTime(), "ServiceTimeB(i" + i + ";k" + k + ")");
+					B[i][k] = cplex.numVar(VStrich[i].getEarliestServiceTime(), VStrich[i].getLatestServiceTime(), "ServiceTimeB(i" + i + ";k" + k + ")");
 				}
 			}
 
-			// Maximum ride time of a user: For example 180 Minutes.
-			double lMaxRideTime = 360;
-
 			// Definition l_i^k: The ride time of user i on vehicle k.
-			IloNumVar[][] l = new IloNumVar[V.length][K.length];
-			for (int i = 1; i <= n; i++) {
+			l = new IloNumVar[VStrich.length][K.length];
+			for (int i = 0; i < VStrich.length; i++) {
 				for (int k = 0; k < K.length; k++) {
-					l[i][k] = cplex.numVar(0, lMaxRideTime, "l(i" + i + ";k" + k + ")");
+					l[i][k] = cplex.numVar(0, Tmax, "l(i" + i + ";k" + k + ")");
 				}
 			}
 			
-			// Constraint 16 Pesch: Presedence Relation with Constraits 17 and 18.
+			// Constraint 16: Precedence Relation with Constraints 17 and 18.
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 1; i <= n; i++) {
 					IloLinearNumExpr expr = cplex.linearNumExpr();
 					expr.addTerm(1.0, B[i][k]);
 					expr.setConstant(t[i][i+n]);
-					cplex.addGe(B[n+i][k], expr, "Constraint16Pesch");
+					cplex.addGe(B[n+i][k], expr, "Constraint16");
 				}
 			}
 			
 
-			// Constraint 17 Pesch: Set the ride time of each user.
+			// Constraint 17: Set the ride time of each user.
 			// Ride time of user i in vehicle k (L_i^k)
 			// ist gleich Ride Time of user i + n minus (Ride time in
 			// i plus service time in i).
-			// Constraint 9 Cordeau
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 1; i <= n; i++) {
 					IloLinearNumExpr expr = cplex.linearNumExpr();
-					expr.addTerm(1.0, B[n + i][k]);
+					expr.addTerm(1.0, B[n+i][k]);
 					expr.addTerm(-1.0, B[i][k]);
-					expr.setConstant(-V[i].getServiceDuration());
-					cplex.addEq(l[i][k], expr, "Constraint17Pesch");
+					expr.setConstant(-VStrich[i].getServiceDuration());
+					cplex.addEq(l[i][k], expr, "Constraint17");
 				}
 			}
 			
 			// Constraint 18 Pesch: Ride time jedes Users muss größer als
 			// die Fahrzeit von Knoten i nach Knoten j sein und kleiner als
 			// der maximal erlaubte Fahrzeit.
-			// Constraint 12 Cordeau
 			for (int k = 0; k < K.length; k++) {
 				for (int i = 1; i <= n; i++) {
-					cplex.addLe(t[i][n + i], l[i][k], "Constraint18_1Pesch");
-					cplex.addLe(l[i][k], lMaxRideTime, "Constraint18_2Pesch");
+					cplex.addLe(t[i][n+i], l[i][k], "Constraint18_1");
+					cplex.addLe(l[i][k], Lmax, "Constraint18_2");
+				}
+			}
+			
+			// Definition of A_i^k: Time a truck k arrives at node i.
+			A = new IloNumVar[VStrich.length][K.length];
+			for (int i = 0; i < VStrich.length; i++) {
+				for (int k = 0; k < K.length; k++) {
+					A[i][k] = cplex.numVar(0, Tmax, "A(i" + i + ";k" + k + ")"); 
 				}
 			}
 			
 			// Constraint 19 Pesch: Der Service an Knoten j kann erst beginnen,
 			// nachdem der Service an Knoten i abgeschlossen wurde und der
 			// LKW von i nach j gefahren ist.
-			// Constraint 7 Cordeau
-			//Cordeau
-//			double M;
-//			for (int i = 0; i < V.length; i++) {
-//				for (int j = 0; j < V.length; j++) {
-//					if (i != j) {
-//						for (int k = 0; k < K.length; k++) {
-//							IloLinearNumExpr expr = cplex.linearNumExpr();
-//							M = Math.max(0, V[i].getEndServiceTime() + V[i].getServiceDuration() + t[i][j]
-//									- V[j].getBeginServiceTime());
-//							expr.addTerm(1.0, B[i][k]);
-//							expr.setConstant(V[i].getServiceDuration() + t[i][j] - M);
-//							expr.addTerm(M, x[i][j][k]);
-//							cplex.addGe(B[j][k], expr, "Constraint7Cordeau");
-//						}
-//					}
-//				}
-//			}
-			
-			//Pesch
 			for (int k = 0; k < K.length; k++) {
-				for (int i = 0; i < V.length; i++) {
-					for (int j = 0; j < V.length; j++) {
+				for (int i = 0; i < VStrich.length; i++) {
+					for (int j = 0; j < VStrich.length; j++) {
 						if (i != j) {
 							IloLinearNumExpr expr1 = cplex.linearNumExpr();
 							expr1.addTerm(1.0, B[i][k]);
-							// 10000 represents Tmax.
-							expr1.setConstant(t[i][j] + V[i].getServiceDuration() + 10000);
-							expr1.addTerm(-10000, x[i][j][k]);
-							cplex.addLe(B[j][k], expr1, "Constraint19aPesch");
+							expr1.addTerm(t[i][j], x[i][j][k]);
+							expr1.addTerm(VStrich[i].getServiceDuration(), x[i][j][k]);
+							expr1.setConstant(Tmax);
+							expr1.addTerm(-Tmax, x[i][j][k]);
+							cplex.addLe(B[j][k], expr1, "Constraint19a");
 							
-							IloLinearNumExpr expr2 = cplex.linearNumExpr();
+							IloLinearNumExpr expr2 = cplex.linearNumExpr();					
 							expr2.addTerm(1.0, B[i][k]);
-//							expr2.addTerm(t[i][j] + V[i].getServiceDuration(), x[i][j][k]);
-							expr2.setConstant(-10000 + t[i][j] + V[i].getServiceDuration());
-							expr2.addTerm(10000, x[i][j][k]);
-							cplex.addGe(B[j][k], expr2, "Constraint19bPesch");
+							expr2.addTerm(t[i][j], x[i][j][k]);
+							expr2.addTerm(VStrich[i].getServiceDuration(), x[i][j][k]);
+							expr2.setConstant(-Tmax);
+							expr2.addTerm(Tmax, x[i][j][k]);
+							cplex.addGe(B[j][k], expr2, "Constraint19b");
 						}
 					}
 				}
 			}
 			
 			// Constraint 20 Pesch: Knoten müssen innerhalb ihrer Servicezeit besucht werden.
-			// Constraint 11 Cordeau
 			for (int k = 0; k < K.length; k++) {
-				for (int i = 0; i < V.length; i++) {
-					cplex.addLe(V[i].getBeginServiceTime(), B[i][k], "Constraint20_1Pesch");
-					cplex.addLe(B[i][k], V[i].getEndServiceTime(), "Constraint20_2Pesch");
+				for (int i = 0; i < VStrich.length; i++) {
+					cplex.addLe(VStrich[i].getEarliestServiceTime(), B[i][k], "Constraint20_1");
+					cplex.addLe(B[i][k], VStrich[i].getLatestServiceTime(), "Constraint20_2");
 				}
 			}
 			
-			// Constraint 21 Pesch: Dauer einer Tour darf die maximale
-			// Tourzeit eines LKWs nicht überschreiten.
-			// Constraint 10 Cordeau
+			// Constraint 21: Dauer einer Tour darf die maximale Fahrzeit Tmax
+			// eines LKWs nicht überschreiten.
 			for (int k = 0; k < K.length; k++) {
 				IloLinearNumExpr expr = cplex.linearNumExpr();
-				expr.addTerm(1.0, B[2 * n + f + 1][k]);
+				expr.addTerm(1.0, B[2*n+f+1][k]);
 				expr.addTerm(-1.0, B[0][k]);
-				cplex.addLe(expr, K[k].getMaxTourTime(), "Constraint21Pesch");
+				cplex.addLe(expr, Tmax, "Constraint21");
 			}
 			
 			
-			z = new IloNumVar[V.length][K.length];
-			for (int i = 0; i < V.length; i++) {
+			z = new IloNumVar[VStrich.length][K.length];
+			for (int i = 0; i < VStrich.length; i++) {
 				for (int k = 0; k < K.length; k++) {
-					z[i][k] = cplex.numVar(0, K[k].getFuelCapacity(), "z(i" + i + ";k" + k + ")");
+					z[i][k] = cplex.numVar(0, K[k].getTankCapacity(), "z(i" + i + ";k" + k + ")");
 				}
 			}
 			
 			
 //			// Constraint 22 Pesch : Fuel Capacity verringert sich mit jedem besuchten Knoten.
-//			// FIXME: Funktioniert nicht. Im ersten Versuch wurde der Spritverbrauch nicht reduziert.
 //			for (int k = 0; k < K.length; k++) {
-//				for (int i = 0; i < V.length; i++) {
-//					for (int j = 1; j <= 2*n; j++) {
-//						if (i != j) {
-//							IloLinearNumExpr expr = cplex.linearNumExpr();
-//							expr.setConstant(K[k].getFuelCapacity());
-//							expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
-//							expr.addTerm(1.0, z[i][k]);
-//							expr.addTerm(1.0, z[j][k]);
-//							//FR ist 1.
-//							expr.addTerm(-c[i][j], x[i][j][k]);
-//							cplex.addGe(expr, 0.0, "Constraint22Pesch");
-//						}
-//					}
-//				}
-//			}
-//			
-//			
-//			//Constraint 23 Pesch: Guarantee that remaining fuel is enough to reach an AFS.
-//			for (int k = 0; k < K.length; k++) {
-//				for (int i = 0; i <= 2*n; i++) {
-//					for (int j = 2*n+1; j < 2*n+f+fStrich+1; j++) {
-//						if (j != 2*n+f+1) {
-//							if (i != j) {
-//								IloLinearNumExpr expr = cplex.linearNumExpr();
-//								expr.setConstant(K[k].getFuelCapacity());
-//								expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
-//								expr.addTerm(1.0, z[i][k]);
-//								expr.addTerm(-1.0, z[j][k]);
-//								expr.addTerm(-c[i][j], x[i][j][k]);
-//								cplex.addGe(expr, 0.0, "Constraint23Pesch");
+//				// Nur Startdepot, Pick-up und Dropdown, Zieldepot.
+//				for (int i = 0; i <= 2*n+f+1; i++) {
+//					// AFSs auslassen
+//					if (i < 2*n+1 || i > 2*n+f) {
+//						// Nur die AFS und dummy AFS
+//						for (int j = 0; j <= 2*n; j++) {
+//							// AFSs auslassen
+//							if (j < 2*n+1 || j > 2*n+f) {
+//								if (i != j) {
+//									IloLinearNumExpr expr = cplex.linearNumExpr();
+//									expr.setConstant(K[k].getTankCapacity());
+//									expr.addTerm(-K[k].getTankCapacity(), x[i][j][k]);
+//									expr.addTerm(1.0, z[i][k]);
+//									expr.addTerm(-1.0, z[j][k]);
+//									//FR ist 1 daher taucht es hier nicht explizit auf.
+//									expr.addTerm(-c[i][j], x[i][j][k]);
+//									cplex.addGe(expr, 0.0, "Constraint22");
+//								}
 //							}
 //						}
 //					}
 //				}
 //			}
-//			
+			
+			
+//			//Constraint 23 Pesch: 
+//			for (int k = 0; k < K.length; k++) {
+//				// Nur Startdepot, Pick-up und Dropdown, Zieldepot.
+//				for (int i = 0; i <= 2*n+f+1; i++) {
+//					if (i < 2*n+1 || i > 2*n+f) { // AFSs auslassen
+//						// Nur die AFS und dummy AFS
+//						for (int j = 2*n+1; j <= 2*n+f+fStrich+1; j++) {
+//							if (j != 2*n+f+1) { // Zieldepot auslassen
+//								if (i != j) {
+//									IloLinearNumExpr expr = cplex.linearNumExpr();
+//									expr.setConstant(K[k].getTankCapacity());
+//									expr.addTerm(-K[k].getTankCapacity(), x[i][j][k]);
+//									expr.addTerm(1.0, z[i][k]);
+//									expr.addTerm(-1.0, z[j][k]);
+//									expr.addTerm(-c[i][j], x[i][j][k]);
+//									cplex.addGe(expr, 0.0, "Constraint23");
+//								}
+//							}
+//						}
+//					}
+//				}
+//			}
+		
+			
 //			// Constraint 24 Pesch: Set z to fuelCapacity of the vehicle.
 //			// Eigene Linearisierung
-//			for (int i = 0; i < V.length; i++) {
+//			for (int i = 0; i < VStrich.length; i++) {
+//				// Für alle AFS und dummy AFS
 //				for (int j = 2*n+1; j <= 2*n+f+fStrich+1; j++) {
-//					if (j <= 2+n+f+1) {
+//					// Zieldepot herausnehmen
+//					if (j != 2*n+f+1) {
 //						if (i != j) {
 //							for (int k = 0; k < K.length; k++) {
 //								IloLinearNumExpr expr = cplex.linearNumExpr();
 //								expr.addTerm(1.0, z[j][k]);
-//								expr.setConstant(-K[k].getFuelCapacity());
-//								expr.addTerm(K[k].getFuelCapacity(), x[i][j][k]);
-//								cplex.addLe(expr, 15.0, "Constraint24Pesch");
+//								expr.setConstant(-K[k].getTankCapacity());
+//								expr.addTerm(K[k].getTankCapacity(), x[i][j][k]);
+//								cplex.addLe(expr, 15.0, "Constraint24");
 //							}
 //						}
 //					}
 //				}
 //			}
-//			
-			// Constraint 25 Pesch: Set Fuel level on start depot to fuelCapacity.
+			
+			// Constraint 25 Pesch: Set Fuel level on start depot to tankCapacity.
 			// Geht das überhaupt oder muss dort x = 1 => Constraint, wie bei Constraint 24.
 			// Das ist eine sinnlose Angelegenheit, da eine Route maximal einmal (nämlich beim Start)
 			// beim Startdepot vorbeikommt. Tanken am Startdepot ist also nicht.
 			// Macht das Modell minimal schneller, da kein "optimaler" Starttankinhalt berechnet wird.
 			for (int k = 0; k < K.length; k++) {
-				cplex.addEq(z[0][k], K[k].getFuelCapacity(), "Constraint25Pesch");
+				cplex.addEq(z[0][k], K[k].getTankCapacity(), "Constraint25");
 			}
-			
-//			// Constraint 26 Groos: Set Fuel level on destination depot to fuelCapacity.
-//			// Geht das überhaupt oder muss dort x = 1 => Constraint, wie bei Constraint 24.
-//			// Genauso wie Constraint 25 ist dieser hier sinnlose, da eine Route genau einmal
-//			// beim Zieldepot vorbeikommt. Tanken am Zieldepot ist also ausgeschlossen.
-			// Macht das Modell nicht schneller!
-//			for (int k = 0; k < K.length; k++) {
-//				cplex.addEq(z[2*n+f+1][k], K[k].getFuelCapacity(), "Constraint26Groos");
-//			}
 			
 			//Constraint 10 Erdogan: Reduce Fuel based on traveled distance
 			for (int k = 0; k < K.length; k++) {
 				// Hier müsste meiner Meinung nach j = 0 bis j < V.length hin, da es für 
 				// alle Knoten und nicht nur für die Kunden gelten soll.
 				// Das funktioniert aber nicht, warum auch immer.
-				for (int j = 1; j <= 2*n; j++) {
-					for (int i = 0; i < V.length; i++) {
-						if (i != j) {
-							IloLinearNumExpr expr = cplex.linearNumExpr();
-							expr.addTerm(1.0, z[i][k]);
-							expr.addTerm(-c[i][j], x[i][j][k]);
-							expr.setConstant(K[k].getFuelCapacity());
-							expr.addTerm(-K[k].getFuelCapacity(), x[i][j][k]);
-							cplex.addLe(z[j][k], expr, "Constraint10Erdogan");
+//				for (int j = 1; j <= 2*n; j++) {
+//				for (int j = 0; j <  VStrich.length; j++) {
+				for (int i = 0; i < VStrich.length; i++) {
+					// Für alle Pudu{o,2n+f+1} (Alle Knoten außer die AFSs und dummy AFSs)
+					for (int j = 0; j <= 2*n+f+1; j++) {
+						if (j < 2*n+1 || j > 2*n+f) {
+							if (i != j) {
+								IloLinearNumExpr expr = cplex.linearNumExpr();
+								expr.addTerm(1.0, z[i][k]);
+								expr.addTerm(-c[i][j], x[i][j][k]);
+								expr.setConstant(K[k].getTankCapacity());
+								expr.addTerm(-K[k].getTankCapacity(), x[i][j][k]);
+								cplex.addLe(z[j][k], expr, "Constraint10Erdogan");
+							}
 						}
 					}
 				}
@@ -575,14 +603,14 @@ public class model {
 				// und das Zieldepot 2*n+f+1 muss ausgenommen sein.
 				if (j != 2*n+f+1) {
 					for (int k = 0; k < K.length; k++) {
-						cplex.addEq(z[j][k], K[k].getFuelCapacity(),"Constraint11Erdogan");
+						cplex.addEq(z[j][k], K[k].getTankCapacity(),"Constraint11Erdogan");
 					}
 				}
 			}
 			
 			// Constraint 12 Erdogan: Remaining fuel must be sufficient to reach AFS
 			for (int k = 0; k < K.length; k++) {
-				for (int i = 0; i < V.length; i++) {
+				for (int i = 0; i < VStrich.length; i++) {
 					for (int j = 2*n+1; j <= 2*n+f+fStrich+1; j++) {
 						if (j != 2*n+f+1) {
 							if (i != j) {
@@ -620,7 +648,7 @@ public class model {
 	 * @return The next node on the route.
 	 */
 	public static int getNextNode(int row, int truck) {
-		for (int i = 0; i < V.length; i++) {
+		for (int i = 0; i < VStrich.length; i++) {
 			try {
 				if (i != row) {
 					if (Math.round(cplex.getValue(x[row][i][truck])) == 1) {
@@ -638,56 +666,101 @@ public class model {
 
 	/**
 	 * Generate a default set of Nodes.</br>
-	 * 3 pickup locations, 3 dropdown locations, the start node and a end node will
-	 * be created.
+	 * 6 pickup locations, 6 dropdown locations, the starand end depot and
+	 * Alternative Fuel Stations will be created. Additionally 2 dummy 
+	 * Alternative Fuel Stations will be created at the same locations 
+	 * as the origin and end depot.
 	 */
 	public static void setDefaultNodes() {
-		n = 6;
+		n = 4;
 		f = 3;
 		fStrich = 2;
 
-		V = new Node[19];
-		// The start node.
-		V[0] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
+		VStrich = new Node[15];
+		// The start depot.
+		VStrich[0] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 5);
 
 		// The pick up nodes.
-		V[1] = new Node(1, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
-		V[2] = new Node(1, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
-		V[3] = new Node(4, 3, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
-		V[4] = new Node(2, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
-		V[5] = new Node(2, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);		
-		V[6] = new Node(5, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
-//		V[7] = new Node(5, 2, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
-//		V[8] = new Node(2, 5, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		VStrich[1] = new Node(1, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		VStrich[2] = new Node(1, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		VStrich[3] = new Node(4, 3, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+		VStrich[4] = new Node(2, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+//		VStrich[5] = new Node(2, 1, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);		
+//		VStrich[6] = new Node(5, 4, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+//		VStrich[7] = new Node(5, 2, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
+//		VStrich[8] = new Node(2, 5, 0, 2000, new int[] { 1, 0, 0, 0 }, 30);
 
 		// The drop down nodes.
-		V[7] = new Node(4, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
-		V[8] = new Node(4, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
-		V[9] = new Node(1, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
-		V[10] = new Node(3, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
-		V[11] = new Node(3, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);		
-		V[12] = new Node(3, 5, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
-//		V[14] = new Node(2, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
-//		V[16] = new Node(5, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		VStrich[5] = new Node(4, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		VStrich[6] = new Node(4, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		VStrich[7] = new Node(1, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+		VStrich[8] = new Node(3, 4, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+//		VStrich[11] = new Node(3, 1, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);		
+//		VStrich[12] = new Node(3, 5, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+//		VStrich[14] = new Node(2, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
+//		VStrich[16] = new Node(5, 3, 0, 2000, new int[] { -1, 0, 0, 0 }, 30);
 
 		// AFSs
-		V[13] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-		V[14] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-		V[15] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);		
-//		V[14] = new Node(4, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-//		V[15] = new Node(1, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		VStrich[9] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		VStrich[10] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		VStrich[11] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);		
+//		VStrich[14] = new Node(4, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		VStrich[15] = new Node(1, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
 		
 		// The end depot.
-		V[16] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 0);
+		VStrich[12] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 5);
 		
 		// dummy AFSs
-		V[17] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-		V[18] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);	
-//		V[17] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-//		V[18] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-//		V[27] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-//		V[28] = new Node(4, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
-//		V[29] = new Node(1, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		VStrich[13] = new Node(3, 3, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+		VStrich[14] = new Node(3, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);	
+//		VStrich[17] = new Node(4, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		VStrich[18] = new Node(1, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		VStrich[27] = new Node(2, 2, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		VStrich[28] = new Node(4, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+//		VStrich[29] = new Node(1, 5, 0, 2000, new int[] { 0, 0, 0, 0 }, 15);
+	}
+	
+ /**
+  * Automatically generate a random set of nodes.
+  * @param numberOfNodes Number of Pick up nodes. (The same amount of drop down nodes are generated)
+  * @param numberOfAFS Number of Alternative Fuel Stations that should be generated.
+  */
+	public static void autoGenerateNodes(int numberOfNodes, int numberOfAFS) {
+		n = numberOfNodes;
+		f = numberOfAFS;
+		fStrich = 2;	// 2 Dummy Alternative Fuel Stations for the origin and end depot.
+
+		VStrich = new Node[2 * n + f + fStrich + 1];
+		
+		// Start Node is the origin depot. Knoten hat keinen load.
+		double xPositionOriginDepot = Math.random() * 4 + 1;
+		double yPositionOriginDepot = Math.random() * 4 + 1;
+		VStrich[0] = new Node(xPositionOriginDepot, yPositionOriginDepot, 0, 480, new int[] {0, 0, 0, 0}, 5);
+
+		// Pick up nodes 1..n
+		for (int i = 1; i <= n; i++) {
+			VStrich[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 480, new int[] {1, 0, 0, 0}, 30);
+		}
+
+		// Drop down nodes n+1..2n
+		for (int i = n + 1; i <= 2 * n; i++) {
+			VStrich[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 480, new int[] {-1, 0, 0, 0}, 30);
+		}
+		
+		// Create the Alternative Fuel Stations
+		for (int i = 2 * n + 1; i <= 2 * n + 1 + f; i++) {
+			VStrich[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 480, new int[] {0, 0, 0, 0}, 15);
+		}
+
+		// Destination Node 2n+f+1. Knoten hat keinen load.
+		double xPositionestinatioDepot = Math.random() * 4 + 1;
+		double yPositioDestinationDepot = Math.random() * 4 + 1; 
+		VStrich[2 * n + f + 1] = new Node(xPositionestinatioDepot, yPositioDestinationDepot, 0, 480, new int[] {0, 0, 0, 0}, 5);
+		
+		// Create the 2 two dummie AFS that are at the origin an destination depot.
+		VStrich[2 * n + f + 2] = new Node(xPositionOriginDepot, yPositionOriginDepot, 0, 480, new int[] {0, 0, 0, 0}, 15);
+		VStrich[2 * n + f + 3] = new Node(xPositionestinatioDepot, yPositioDestinationDepot, 0, 480, new int[] {0, 0, 0, 0}, 15);
+
 	}
 
 	private static void solveModel() {
@@ -704,14 +777,14 @@ public class model {
 				System.out.println();
 
 				for (int k = 0; k < K.length; k++) {
-					System.out.println("Solution for Truck " + k);
-					for (int i = 0; i < V.length; i++) {
+					System.out.println("Solution for Truck " + k + ":");
+					for (int i = 0; i < VStrich.length; i++) {
 						System.out.print("\t" + i);
 					}
 					System.out.println();
-					for (int i = 0; i < V.length; i++) {
+					for (int i = 0; i < VStrich.length; i++) {
 						System.out.print(i + "\t");
-						for (int j = 0; j < V.length; j++) {
+						for (int j = 0; j < VStrich.length; j++) {
 							if (i != j) {
 								// Möglicherweise müssen Werte gerundet werden.
 								if (Math.round(cplex.getValue(x[i][j][k])) == 0) {
@@ -752,11 +825,13 @@ public class model {
 					System.out.println();
 					
 					
-					System.out.println("Knoten\tx-Pos\ty-Pos\tTime\tFuel");
+					System.out.println("Knoten\tx-Pos\ty-Pos\tTime\tSTime\tFuel");
 					node = 0;
 					do {
-						System.out.print(node + "\t" + V[node].getxPosition() + "\t" + V[node].getyPosition() + "\t");
+						System.out.print(node + "\t" + VStrich[node].getxPosition() + "\t");
+						System.out.print(VStrich[node].getyPosition() + "\t");
 						System.out.print(Math.round(cplex.getValue(B[node][k])) + "\t");
+						System.out.print(VStrich[node].getServiceDuration() + "\t");
 						System.out.println(cplex.getValue(z[node][k]));
 						node = getNextNode(node, k);
 					} while (node != 0);
