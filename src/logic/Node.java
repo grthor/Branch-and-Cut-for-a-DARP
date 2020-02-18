@@ -10,16 +10,20 @@ package logic;
  *
  */
 public class Node {
+	/**
+	 * For humans readable name
+	 */
+	private String name = "";
 	
 	/**
 	 * x-Position of the node in a graph.
 	 */
-	private double xPosition;
+	private double latitude;
 	
 	/**
 	 * y-Position of the node in a graph.
 	 */
-	private double yPosition;
+	private double longitude;
 	
 	/**
 	 * Earliest time to pick up.
@@ -59,11 +63,12 @@ public class Node {
 	 * load[3] = Empty 40" container
 	 * @param serviceDuration Time for loading/unloading or refueling.
 	 */
-	public Node(double xPosition, double yPosition, double earliestServiceTime, double latestServiceTime, int[] load,
+	public Node(String name, double latitude, double longtitude, double earliestServiceTime, double latestServiceTime, int[] load,
 			int serviceDuration) {
 		super();
-		this.xPosition = xPosition;
-		this.yPosition = yPosition;
+		this.name = name;
+		this.latitude = latitude;
+		this.longitude = longtitude;
 		this.earliestServiceTime = earliestServiceTime;
 		this.latestServiceTime = latestServiceTime;
 		this.load = load;
@@ -72,38 +77,56 @@ public class Node {
 
 
 	/**
-	 * Get the x-position of the node in a graph.</b>
+	 * Getter for the name of the node.
+	 * @return The name of the node
+	 */
+	public String getName() {
+		return name;
+	}
+
+
+	/**
+	 * Setter for the name of the node.
+	 * @param name The new name of the node
+	 */
+	public void setName(String name) {
+		this.name = name;
+	}
+
+
+	/**
+	 * Get the latitude of the node in a graph.</b>
 	 * Used for calculating the distance between two nodes.
-	 * @return The x-position of the node in a graph.
+	 * @return The latitude of the node in a graph.
 	 */
-	public double getxPosition() {
-		return xPosition;
+	public double getlatitude() {
+		return latitude;
 	}
 
 	/**
-	 * Set the x-position of the node in a graph.
-	 * @param xPosition The new x-position of this node.
+	 * Set the latitude of the node in a graph.
+	 * @param latitude The new latitude of this node.
 	 */
-	public void setxPosition(double xPosition) {
-		this.xPosition = xPosition;
+	public void setxPosition(double latitude) {
+		this.latitude = latitude;
 	}
 
 
 	/**
-	 * Get the y-position of the node in the graph.</b>
+	 * Get the ongtitude of the node in the graph.</b>
 	 * Used for calculating the distance between two nodes.
-	 * @return The y-position of the node.
+	 * @return The longtitude of the node.
 	 */
-	public double getyPosition() {
-		return yPosition;
+	public double getlongtitude() {
+		return longitude;
 	}
 
 	/**
-	 * Set the y-position of this node in the graph.
-	 * @param yPosition new y-position of the node.
+	 * Set the longtitude of this node in the graph.
+	 * @param longtitude new longtitude of the node.
 	 */
-	public void setyPosition(double yPosition) {
-		this.yPosition = yPosition;
+	public void setlongtitude(double longtitude) {
+		this.longitude = longtitude;
 	}
 
 

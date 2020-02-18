@@ -23,7 +23,7 @@ public class Truck {
 	/**
 	 * Maximum tank capacity (like 60 gallons).
 	 */
-	private int tankCapacity;
+	private double tankCapacity;
 	
 	/**
 	 * Constructor for a new Truck.
@@ -35,7 +35,7 @@ public class Truck {
 	 * @param maxTourTime Maximal permitted amount of time the truck can drive.
 	 * @param fuelCapacity Maximum tank capacity.
 	 */
-	public Truck(int[] containerCapacity, int tankCapacity) {
+	public Truck(int[] containerCapacity, double tankCapacity) {
 		super();
 		this.containerCapacity = containerCapacity;
 		this.tankCapacity = tankCapacity;
@@ -45,7 +45,7 @@ public class Truck {
 	 * Get the maximal tank capacity.
 	 * @return Maximal tank capacity of the truck.
 	 */
-	public int getTankCapacity() {
+	public double getTankCapacity() {
 		return tankCapacity;
 	}
 	
@@ -53,7 +53,7 @@ public class Truck {
 	 * Set the maximal tank capacity.
 	 * @param fuelCapacity The new maximal tank capacity.
 	 */
-	public void setTankCapacity(int fuelCapacity) {
+	public void setTankCapacity(double fuelCapacity) {
 		this.tankCapacity = fuelCapacity;
 	}
 	
