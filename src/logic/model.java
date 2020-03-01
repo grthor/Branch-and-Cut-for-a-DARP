@@ -3,6 +3,9 @@ package logic;
 import ilog.cplex.*;
 import ilog.cplex.IloCplex.UnknownObjectException;
 import ilog.concert.*;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 /**
  * This class can be started (has a main method) and solves
@@ -25,6 +28,8 @@ public class model {
 	 * Number of users (number of pick-up locations)
 	 */
 	private static int n;
+	
+	private static double lMaxRideTime;
 	/**
 	 * Array containing all nodes.
 	 */
@@ -65,14 +70,6 @@ public class model {
 		// This would generate a set of 12 nodes (5 Pick up, 5 drop down, origin depot,
 		// destination depot)
 		// autoGenerateNodes(5);
-
-		K = new Truck[3];
-		// This vehicle has a capacity of 1 and can drive for 480 minutes.
-		K[0] = new Truck(1, 480);
-		// This vehicle has a capacity of 2 and can drive for 180 minutes.
-		K[1] = new Truck(2, 180);
-		// This vehicle has a capacity of 2 and can drive for 240 minutes.
-		K[2] = new Truck(2, 240);
 
 		c = new double[N.length][N.length];
 		t = new double[N.length][N.length];
@@ -227,7 +224,6 @@ public class model {
 							// Calculate M
 							M = Math.max(0, N[i].getLatestServiceTime() + N[i].getServiceDuration() + t[i][j]
 									- N[j].getEarliestServiceTime());
-
 							IloLinearNumExpr expr = cplex.linearNumExpr();
 							expr.addTerm(1.0, B[i][k]);
 							expr.setConstant(N[i].getServiceDuration() + t[i][j] - M);
@@ -270,7 +266,6 @@ public class model {
 			}
 
 			// Maximum ride time of a user: For example 480 minutes = 8 hours.
-			double lMaxRideTime = 480;
 
 			// Definition L_i^k: The ride time of user i on vehicle k.
 			L = new IloNumVar[N.length][K.length];
@@ -410,10 +405,8 @@ public class model {
 	 * be created.
 	 */
 	public static void setDefaultNodes() {
-		n = 5;
 
-		// A total of 12 nodes.
-		N = new Node[12];
+		
 
 		// Explanation of the arguments: new Node(1, 2, 0, 480, 0, 0);
 		// 		x-Position of the node = 1
@@ -423,25 +416,60 @@ public class model {
 		// 		load (how many people should be transported) = 0 people
 		// 		service duration (how long takes it to load the people in the vehicle) = 0 minutes
 		
-		// Start node.
-		N[0] = new Node(1, 2, 0, 480, 0, 0);
+		// Benchmark instance file path
+		String filePath = "";
+		  
+		  String contents = null;
+		  try {
+		   contents = new String(Files.readAllBytes(Paths.get(filePath)));
+		  } catch (IOException e) {
+		   e.printStackTrace();
+		  }
+		  
+		  String[] lines = contents.split("\\r?\\n");
+		  int size = lines.length;
+		  
+		// A total of 12 nodes.
+		  N = new Node[size-1];
+			
+		  for (int i = 0; i < size; i++) {
+		  	String line = lines[i];
+		  	String[] elements = line.trim().split("\\s+");
+		    int element_size = elements.length;
+		  	if (i != 0) {
+		  		// Explanation of the arguments: new Node(1, 2, 0, 480, 0, 0);
+				// 		x-Position of the node = 1
+				// 		y-Position of the node = 2
+				// 		earliest service time = 0 (start service directly)
+				// 		latest service time = 480 (end service after 8 hours)
+				// 		load (how many people should be transported) = 0 people
+				// 		service duration (how long takes it to load the people in the vehicle) = 0 minutes
+		        int index = Integer.parseInt(elements[0]);
+		        float x = Float.parseFloat(elements[1]);
+		        float y = Float.parseFloat(elements[2]);
+		        int d = Integer.parseInt(elements[3]);
+		        int q = Integer.parseInt(elements[4]);
+		        int e = Integer.parseInt(elements[5]);
+		        int l = Integer.parseInt(elements[6]);
+		        
+		        N[index] = new Node(x, y, e, l, q, d);
+	        } else {
+		        int VehNum = Integer.parseInt(elements[0]);
+		        n = Integer.parseInt(elements[1]);
+		        int maxDriveTime = Integer.parseInt(elements[2]);
+		        int capacity = Integer.parseInt(elements[3]);
+		        lMaxRideTime = Integer.parseInt(elements[4]);
+		        System.out.println("Create vehs");
+		        K = new Truck[VehNum];
+	  			for(int j = 0; j < VehNum; j++) {
+	  				// This vehicle has a capacity of 1 and can drive for 480 minutes.
+	  				K[j] = new Truck(capacity, maxDriveTime);
+	  			}
+		    }
 
-		// Pick up nodes.
-		N[1] = new Node(1, 1, 0, 480, 1, 5);
-		N[2] = new Node(1, 4, 0, 480, 1, 5);
-		N[3] = new Node(4, 3, 0, 480, 1, 5);
-		N[4] = new Node(2, 2, 0, 480, 1, 5);
-		N[5] = new Node(2, 4, 0, 480, 1, 5);
-
-		// Drop down nodes.
-		N[6] = new Node(4, 1, 0, 480, -1, 5);
-		N[7] = new Node(4, 4, 0, 480, -1, 5);
-		N[8] = new Node(1, 3, 0, 480, -1, 5);
-		N[9] = new Node(3, 4, 0, 480, -1, 5);
-		N[10] = new Node(3, 1, 0, 480, -1, 5);
-
-		// End depot.
-		N[11] = new Node(3, 2, 0, 480, 0, 0);
+		}
+		  System.out.println(N);
+		
 	}
 
 	/**
