@@ -87,9 +87,8 @@ public class model {
 					yDistance = Math.pow(N[i].getyPosition() - N[j].getyPosition(), 2);
 					c[i][j] = Math.sqrt(xDistance + yDistance);
 
-					// The travel time (in minutes) between a node i and a node j is the distance *
-					// 15.
-					t[i][j] = c[i][j] * 15;
+					// The travel time is equal to the euclidean distance.
+					t[i][j] = c[i][j];
 				}
 			}
 		}
@@ -363,41 +362,41 @@ public class model {
 		return 0;
 	}
 
-	/**
-	 * Automatically generates random nodes.
-	 * 
-	 * @param numberOfNodes Amount of pick-up nodes.
-	 */
-	public static void autoGenerateNodes(int numberOfNodes) {
-		// Auto generate Nodes:
-		n = numberOfNodes;
-
-		N = new Node[2 * n + 2];
-		
-		// Explanation of the arguments: new Node(1, 2, 0, 480, 0, 0);
-		// 		x-Position of the node = 1
-		// 		y-Position of the node = 2
-		// 		earliest service time = 0 (start service directly)
-		// 		latest service time = 480 (end service after 8 hours)
-		// 		load (how many people should be transported) = 0 people
-		// 		service duration (how long takes it to load the people in the vehicle) = 0 minutes
-		
-		// Start Node is the origin depot.
-		N[0] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 480, 0, 0);
-
-		// Pick up nodes 1..n
-		for (int i = 1; i <= n; i++) {
-			N[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 480, 1, 5);
-		}
-
-		// Drop down nodes n+1..2n
-		for (int i = n + 1; i <= 2 * n; i++) {
-			N[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 480, -1, 5);
-		}
-
-		// Destination Node 2n+1 is the last node.
-		N[2 * n + 1] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 480, 0, 0);
-	}
+//	/**
+//	 * Automatically generates random nodes.
+//	 * 
+//	 * @param numberOfNodes Amount of pick-up nodes.
+//	 */
+//	public static void autoGenerateNodes(int numberOfNodes) {
+//		// Auto generate Nodes:
+//		n = numberOfNodes;
+//
+//		N = new Node[2 * n + 2];
+//		
+//		// Explanation of the arguments: new Node(1, 2, 0, 480, 0, 0);
+//		// 		x-Position of the node = 1
+//		// 		y-Position of the node = 2
+//		// 		earliest service time = 0 (start service directly)
+//		// 		latest service time = 480 (end service after 8 hours)
+//		// 		load (how many people should be transported) = 0 people
+//		// 		service duration (how long takes it to load the people in the vehicle) = 0 minutes
+//		
+//		// Start Node is the origin depot.
+//		N[0] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 480, 0, 0);
+//
+//		// Pick up nodes 1..n
+//		for (int i = 1; i <= n; i++) {
+//			N[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 480, 1, 5);
+//		}
+//
+//		// Drop down nodes n+1..2n
+//		for (int i = n + 1; i <= 2 * n; i++) {
+//			N[i] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 480, -1, 5);
+//		}
+//
+//		// Destination Node 2n+1 is the last node.
+//		N[2 * n + 1] = new Node(Math.random() * 4 + 1, Math.random() * 4 + 1, 0, 480, 0, 0);
+//	}
 
 	/**
 	 * Generate a default set of Nodes.</br>
@@ -417,7 +416,7 @@ public class model {
 		// 		service duration (how long takes it to load the people in the vehicle) = 0 minutes
 		
 		// Benchmark instance file path
-		String filePath = "";
+		String filePath = "C:/Users/thorb/Documents/1-34.txt";
 		  
 		  String contents = null;
 		  try {
